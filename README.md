@@ -29,11 +29,11 @@ A multiprocess, running an asynchronous multiprocessing backend for onvif calls 
 
 (c) 2023 Sampsa Riikonen
 
-Contains code from the WSDiscovery package: please see directory [valkka/discovery/wsdiscovery/](discovery/wsdiscovery/)
+Contains code from the WSDiscovery package: please see directory [valkka/discovery/wsdiscovery/](valkka/discovery/wsdiscovery/)
 
 ## License
 
 MIT 
 
-For WSDiscovery, LGPL, see please see directory [valkka/discovery/wsdiscovery/](discovery/wsdiscovery/)
+For WSDiscovery, LGPL, see please see directory [valkka/discovery/wsdiscovery/](valkka/discovery/wsdiscovery/)
 
