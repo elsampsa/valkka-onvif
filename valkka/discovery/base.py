@@ -19,7 +19,7 @@ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEAL
 @file    base.py
 @author  Sampsa Riikonen
 @date    2019
-@version 1.5.4 
+@version 1.6.1 
 
 @brief   Discovery module for onvif cameras, using wsdiscovery and brute-force scan
 """
@@ -145,6 +145,7 @@ def runWSDiscovery():
             if match is None:
                 continue
             else:
+                # print(match)
                 ip_port = match.group(1)
                 if len(ip_port.split(":")) > 1:
                     ip, port = ip_port.split(":")
