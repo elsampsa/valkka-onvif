@@ -6,15 +6,16 @@ import yaml
 import re
 from pprint import pprint, pformat
 
+
 class Namespace:
     pass
-
 
 
 class OnvifProcess(AsyncBackMessageProcess):
 
     def __init__(self, name = "onvif"):
         super().__init__(name=name)
+        # print(">>", self.logger)
         self.cache = {}
         """{
             1 : { # indexed by the slot number
@@ -74,20 +75,24 @@ class OnvifProcess(AsyncBackMessageProcess):
         services = self.cache[slot]["services"]
         Profiles = await services.media.ws_client.GetProfiles()
         # search for media profiles that use H264 encoding and whose
-        # width is <= 1920
+        # width is <= max_width
         token = None # profile token
-        width = 0 
+        width = 0
         enc_name = None # name of the encoder profile
         for Profile in Profiles:
             width_ = Profile.VideoEncoderConfiguration.Resolution.Width
+            self.logger.debug("c__getH264Tail : slot %s -> profile token: %s, width: %s", slot, Profile.token, width_)
             enc = Profile.VideoEncoderConfiguration.Encoding # i.e. 'H264'
-            if width_ <= 1920 and enc == "H264":
-                token = Profile.token
-                name = Profile.VideoEncoderConfiguration.Name
-                width = max(width_, width)
+            if width_ <= max_width and enc == "H264":
+                if width_ > width:
+                    self.logger.debug("c__getH264Tail : slot %s -> found better width %s", slot, width_)
+                    width = width_
+                    token = Profile.token
+                    name = Profile.VideoEncoderConfiguration.Name
         if not token:
-            self.logger.warning("c__getH264Tail : No suitable H264 media profile found.  Current width: %s, enc: %s", width, enc)
-            return
+            self.logger.warning("c__getH264Tail : No suitable H264 media profile found for slot %s.  Current width: %s, enc: %s", slot, width, enc)
+            # return
+            await self.send_out__(MessageObject("tail", slot=slot, value=None, port=None))
         f=self.f # shorthand
         StreamSetup=f.StreamSetup( 
             Stream = f.StreamType(0), 

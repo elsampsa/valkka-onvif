@@ -8,7 +8,7 @@ For more information, see [here](https://elsampsa.github.io/valkka-examples/_bui
 
 From pypi with:
 ```
-pip install valkka-onvif
+pip install -U valkka-onvif
 ```
 
 ## Test studio
@@ -24,6 +24,13 @@ Check that out and develop further in [examples/studio.py](examples/studio.py)
 ## Work in progress
 
 A multiprocess, running an asynchronous multiprocessing backend for onvif calls in [here](valkka/onvif/multiprocess/base.py)
+
+## Camera search program
+
+After installing this package, please try
+```
+valkka-camsearch -h
+```
 
 ## Author & Copyright
 

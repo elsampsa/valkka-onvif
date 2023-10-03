@@ -2,7 +2,7 @@ from setuptools import setup, Extension, find_packages
 import sys
 
 # modified by setver.bash
-version = '1.6.1'
+version = '1.6.3'
 
 setup(
     name = "valkka-onvif",
@@ -25,6 +25,12 @@ setup(
     
     include_package_data=True, # # conclusion: NEVER forget this : files get included but not installed
     # # "package_data" keyword is a practical joke: use MANIFEST.in instead
+
+    entry_points={
+        'console_scripts': [
+            'valkka-camsearch = valkka.discovery.cli.camsearch:main'
+        ]
+    },
 
     # metadata for upload to PyPI
     author = "Sampsa Riikonen",
