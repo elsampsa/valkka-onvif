@@ -1,4 +1,5 @@
 from pathlib import Path
+from pprint import pprint
 import copy, argparse, sys, os, yaml, logging
 from valkka.discovery import runWSDiscovery, runARPScan
 from valkka.onvif.multiprocess import OnvifProcess
@@ -35,10 +36,11 @@ def process_cl_args():
         required=False)    
     parser.add_argument("--yaml", action="store", help="(optional) name of valkka-streamer compatible yaml config file", default=None, type=str,
         required=False)
-    parser.add_argument("--width", action="store", help="onvif search for stream profiles with this max. image width", default=1920, type=int,
+    parser.add_argument("--width", action="store", help="onvif search for stream profiles with this max. image width", default=7680, type=int,
         required=False)
     parser.add_argument("--debug", action="store_true", help="enable debugging output for OnvifProcess", default = False)
     parser.add_argument("--shutup", action="store_true", help="minimal output from OnvifProcess", default = False)
+    parser.add_argument("--h264", action="store_true", help="Search only for H264 profiles", default = False)
     parsed, unparsed = parser.parse_known_args()
     for arg in unparsed:
         print("Unknow option", arg)
@@ -95,7 +97,7 @@ def main():
     for i in range(len(p.cache)):
         message=pipe.recv()
         if message() != "OnvifStatus":
-            print(f"    FATAL: Got weird response '{message()}' from OnvifProcess")
+            print(f"    FATAL: Got bad response '{message()}' from OnvifProcess")
             continue
         slot=message["slot"] # int
         ok=message["All"] # boolean # status of all relevant services
@@ -115,31 +117,43 @@ def main():
     # request probing the availability of H264
     # and get their "tails" if possible
     for slot in ok_slots:
-        p.getH264Tail(slot, max_width=pars.width)
+        encodings = None
+        if pars.h264:
+            encodings = ["H264"]
+        p.getTails(slot, max_width=pars.width, encodings = encodings)
 
     # read results
-    good_streams = {} # key: ipv4 address, value: rtsp address (with rtsp://,tail,etc.)
+    good_streams = {} # key: ipv4 address, value: a list of {"rtsp" : rtsp address (with rtsp://,tail,etc.), "resolution" : (width, height), "encoding": "H264"}
     for slot in ok_slots:
         message=pipe.recv()
-        if message() != "tail":
-            print(f"    FATAL: Got weird response '{message()}' from OnvifProcess")
-            continue
         onvif_ip = p.cache[slot]["address"]
         onvif_port = p.cache[slot]["port"]
-        if message["value"]:
-            tail = message["value"] # we got the tail!
-            port = message["port"]
-            if port is None:
-                port = 554
-            # print("got tail", tail)
-            ip = p.cache[slot]['address']
-            rtsp_adr = f"rtsp://{pars.user}:{pars.passwd}@{ip}:{port}/{tail}"
-            good_streams[ip] = rtsp_adr
+        ip = p.cache[slot]['address']
+        if message() != "tails":
+            print(f"    FATAL: Got bad response '{message()}' from OnvifProcess for {onvif_ip}:{onvif_port}")
+            continue
+        # print(message)
+        lis=message["value"]
+        if len(lis) > 0:
+            good_streams[ip] = []
+            for dic in lis:
+                tail = dic["tail"]
+                enc = dic["enc"]
+                port = dic["port"]
+                resolution = (dic["width"], dic["height"])
+                rtsp_adr = f"rtsp://{pars.user}:{pars.passwd}@{ip}:{port}/{tail}"
+                good_streams[ip].append({
+                    "rtsp": rtsp_adr,
+                    "resolution": resolution,
+                    "enc": enc
+                })
             print(f"    Success for {onvif_ip}:{onvif_port} -> {rtsp_adr}")
         else:
             print(f"    WARNING: tail query failed for {onvif_ip}:{onvif_port}")
 
+    # pprint(good_streams)
     p.stop()
+    # return
 
     arp_streams={}
     if pars.arp:
@@ -153,8 +167,12 @@ def main():
 
     print("\n**** FINAL LIST OF RTSP ADDRESSES ****")
     print("\n---- from ONVIF & Guaranteed to work ----")
-    for ip, rtsp in good_streams.items():
-        print(f"    {rtsp}")
+    for ip, lis in good_streams.items():
+        print(f"{ip}")
+        for dic in lis:
+            width, height =dic["resolution"]
+            print(f'    {dic["enc"]} stream {width}x{height} at {dic["rtsp"]}')
+
     if pars.arp:
         print("\n---- from ARP-SCAN ----------------------")
         for ip, rtsp in arp_streams.items():
@@ -164,44 +182,55 @@ def main():
         print("\nWRITING CSV FILE", pars.csv)
         with open(pars.csv,"w") as f:
             cc=0
-            for ip, rtsp in good_streams.items():
-                f.write(f'{cc}, ONVIF, {rtsp}\n')
-                cc+=1
+            for ip, lis in good_streams.items():
+                for dic in lis:
+                    width, height = dic["resolution"]
+                    rtsp = dic["rtsp"]
+                    enc = dic["enc"]
+                    f.write(f'{cc}, ONVIF, {width}, {height}, {enc}, {rtsp}\n')
+                    cc+=1
             if pars.arp:
                 for ip, rtsp in arp_streams.items():
-                    f.write(f'{cc}, ARP, {rtsp}\n')
+                    f.write(f'{cc}, ARP, ?, ?, ? {rtsp}\n')
                     cc+=1
 
     if pars.yaml:
         print("\nWRITING YAML FILE", pars.yaml)
-        dic={}
-        dic["streams"]=[]
+        dic_yaml={}
+        dic_yaml["streams"]=[]
         cc=0
-        for ip, rtsp in good_streams.items():
-            dic["streams"].append({
-                "name" : f"cam{cc}",
-                "address" : rtsp,
-                "use" : True,
-                "discovered" : "from onvif"
-            })
+        for ip, lis in good_streams.items():
+            for dic in lis:
+                width, height = dic["resolution"]
+                rtsp = dic["rtsp"]
+                enc = dic["enc"]
+                dic_yaml["streams"].append({
+                    "name" : f"cam{cc}",
+                    "address" : rtsp,
+                    "use" : True,
+                    "discovered" : f"from onvif {width}x{height} {enc}"
+                })
+                cc+=1
         if pars.arp:
             for ip, rtsp in arp_streams.items():
-                dic["streams"].append({
+                dic_yaml["streams"].append({
                 "name" : f"cam{cc}",
                 "address" : rtsp,
                 "use" : True,
                 "discovered" : "from arp"
-            })
-            cc+=1
+                })
+                cc+=1
         with open(pars.yaml,"w") as f:
-            yaml.dump(dic, f, default_flow_style=False)
+            yaml.dump(dic_yaml, f, default_flow_style=False)
 
     if pars.comm:
         print("\nEXECUTING COMMAND", pars.comm, "FOR ALL STREAMS")
-        for ip, rtsp in good_streams.items():
-            comm=f"{pars.comm} {rtsp} &" # launch desired command in background
-            print("executing", comm)
-            os.system(comm)
+        for ip, lis in good_streams.items():
+            for dic in lis[0:1]: # take just one stream
+                rtsp=dic["rtsp"]
+                comm=f"{pars.comm} {rtsp} &" # launch desired command in background
+                print("executing", comm)
+                os.system(comm)
         if pars.arp:
             for ip, rtsp in arp_streams.items():
                 comm=f"{pars.comm} {rtsp} &" # launch desired command in background
@@ -209,6 +238,7 @@ def main():
                 os.system(comm)
 
     print("\nbye!")
+
 
 if __name__ == "__main__":
     main()

@@ -70,38 +70,7 @@ class OnvifProcess(AsyncBackMessageProcess):
         self.event_group.set(event_index)
 
 
-    @exclogmsg
-    async def getH264Tail__(self, slot: int = None, max_width = 1920):
-        services = self.cache[slot]["services"]
-        Profiles = await services.media.ws_client.GetProfiles()
-        # search for media profiles that use H264 encoding and whose
-        # width is <= max_width
-        token = None # profile token
-        width = 0
-        enc_name = None # name of the encoder profile
-        for Profile in Profiles:
-            width_ = Profile.VideoEncoderConfiguration.Resolution.Width
-            self.logger.debug("c__getH264Tail : slot %s -> profile token: %s, width: %s", slot, Profile.token, width_)
-            enc = Profile.VideoEncoderConfiguration.Encoding # i.e. 'H264'
-            if width_ <= max_width and enc == "H264":
-                if width_ > width:
-                    self.logger.debug("c__getH264Tail : slot %s -> found better width %s", slot, width_)
-                    width = width_
-                    token = Profile.token
-                    name = Profile.VideoEncoderConfiguration.Name
-        if not token:
-            self.logger.warning("c__getH264Tail : No suitable H264 media profile found for slot %s.  Current width: %s, enc: %s", slot, width, enc)
-            # return
-            await self.send_out__(MessageObject("tail", slot=slot, value=None, port=None))
-        f=self.f # shorthand
-        StreamSetup=f.StreamSetup( 
-            Stream = f.StreamType(0), 
-            Transport = f.Transport( 
-                Protocol = f.TransportProtocol(1) 
-            ) 
-        )
-        res=await services.media.ws_client.GetStreamUri(StreamSetup, token)
-        uri=res.Uri
+    def tailFromUri(self, uri):
         # print(f"uri >{uri}<")
         # p = "\/\/[^\/]+\/(.+)" # i.e. get "/media/video3" from "rtsp://10.0.0.4/media/video3" # OLD
         # uri="rtsp://10.0.0.4:80/media/video3"
@@ -115,16 +84,80 @@ class OnvifProcess(AsyncBackMessageProcess):
                 port = int(port)
             else:
                 ip = ip_port
-                port = None
+                # port = None
+                port=554 # better use the default port..
             tail = match.group(2)
             # print("> tail, port", tail, port)
-            await self.send_out__(MessageObject("tail", slot=slot, value=tail, port=port))
+            # await self.send_out__(MessageObject("tail", slot=slot, value=tail, port=port))
+            return port, tail
         else:
-            self.logger.warning("c__getH264Tail : Could not extract tail from %s", uri)
-            await self.send_out__(MessageObject("tail", slot=slot, value=None, port=None))
+            self.logger.warning("tailFromUri : Could not extract tail from %s", uri)
+            # await self.send_out__(MessageObject("tail", slot=slot, value=None, port=None))
+            return None, None
 
-    async def c__getH264Tail(self, slot: int = None, max_width = 1920):
-        asyncio.get_event_loop().create_task(self.getH264Tail__(slot=slot, max_width=max_width))
+
+    @exclogmsg
+    async def getTails__(self, slot: int = None, max_width = 1920, encodings: list = None):
+        f=self.f # shorthand
+        services = self.cache[slot]["services"]
+        Profiles = await services.media.ws_client.GetProfiles()
+        # search for media profiles that use H264 encoding and whose
+        # width is <= max_width
+        # token = None # profile token
+        # width = 0
+        # enc_name = None # name of the encoder profile
+        lis = []
+        for Profile in Profiles:
+            width_ = Profile.VideoEncoderConfiguration.Resolution.Width
+            height_ = Profile.VideoEncoderConfiguration.Resolution.Height
+            self.logger.debug("c__getTails : slot %s -> profile token: %s, width: %s", slot, Profile.token, width_)
+            enc = Profile.VideoEncoderConfiguration.Encoding # i.e. 'H264'
+            if width_ <= max_width:
+                if encodings and enc not in encodings:
+                    continue
+                #if width_ > width:
+                # self.logger.debug("c__getTails : slot %s -> found better width %s", slot, width_)
+                self.logger.debug("c__getTails : slot %s -> found width %s", slot, width_)
+                # width = width_
+                token = Profile.token
+                name = Profile.VideoEncoderConfiguration.Name
+                StreamSetup=f.StreamSetup( 
+                    Stream = f.StreamType(0), 
+                    Transport = f.Transport( 
+                        Protocol = f.TransportProtocol(1) 
+                    ) 
+                )
+                res=await services.media.ws_client.GetStreamUri(StreamSetup, token)
+                port, tail = self.tailFromUri(res.Uri)
+                if tail is not None:
+                    self.logger.debug("c__getTails : slot %s append profile with width %s", slot, width_)
+                    lis.append({
+                        "slot": slot,
+                        "enc": "H264",
+                        "port": port,
+                        "tail": tail,
+                        "width": width_,
+                        "height": height_
+                    })
+        await self.send_out__(MessageObject("tails", value=lis))
+
+        """
+        if not token:
+            self.logger.warning("c__getTails : No suitable H264 media profile found for slot %s.  Current width: %s, enc: %s", slot, width, enc)
+            # return
+            await self.send_out__(MessageObject("tail", slot=slot, value=None, port=None))
+            return
+
+        StreamSetup=f.StreamSetup( 
+            Stream = f.StreamType(0), 
+            Transport = f.Transport( 
+                Protocol = f.TransportProtocol(1) 
+            ) 
+        )
+        """
+        
+    async def c__getTails(self, slot: int = None, max_width = 1920, encodings: list = None):
+        asyncio.get_event_loop().create_task(self.getTails__(slot=slot, max_width=max_width, encodings = encodings))
 
 
     @exclogmsg
@@ -212,10 +245,10 @@ class OnvifProcess(AsyncBackMessageProcess):
             "testOnvif", slot = slot))
 
 
-    def getH264Tail(self, slot: int, max_width = 1920):
+    def getTails(self, slot: int, max_width = 1920, encodings: list = None):
         if not self.has_slot__(slot): return
         self.sendMessageToBack(MessageObject(
-            "getH264Tail", slot = slot, max_width = max_width))
+            "getTails", slot = slot, max_width = max_width, encodings = encodings))
     
 
 
@@ -244,7 +277,7 @@ def test1():
     p.testOnvif(slot=1)
     print("got>",pipe.recv())
     time.sleep(1)
-    p.getH264Tail(slot=1, max_width=1920)
+    p.getTails(slot=1, max_width=1920)
     time.sleep(1)
     print("got>",pipe.recv())
     p.stop()
@@ -301,14 +334,14 @@ def test2():
     # request probing the availability of H264
     # and get their "tails" if possible
     for slot in ok_slots:
-        p.getH264Tail(slot)
+        p.getTails(slot)
 
     # read results
     good_streams = {} # key: ipv4 address, value: rtsp address (with rtsp://,tail,etc.)
     for slot in ok_slots:
         message=pipe.recv()
         if message() != "tail":
-            continue # one of the getH264Tail requests didn't work out
+            continue # one of the getTails requests didn't work out
         if message["value"]:
             tail = message["value"] # we got the tail!
             port = message["port"]
