@@ -562,6 +562,9 @@ class WSDiscovery:
 
         time.sleep(timeout)
 
+        #for s in list(self._remoteServices.values()):
+        #    print(">>", s._xAddrs)
+
         return self._filterServices(list(self._remoteServices.values()), types, scopes)
 
     def publishService(self, types, scopes, xAddrs):

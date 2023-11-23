@@ -141,6 +141,7 @@ def runWSDiscovery():
     ip_addresses = []
     for ws_device in ws_devices:
         for http_address in ws_device.getXAddrs():
+            # print(">>", http_address)
             match = re.search(reg, http_address)
             if match is None:
                 continue

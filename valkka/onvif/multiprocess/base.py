@@ -232,6 +232,23 @@ class OnvifProcess(AsyncBackMessageProcess):
                 "deRegister", slot = slot, event_index = i))
 
 
+    def iterateResponses(self, ex_message = "OnvifStatus"):
+        """Returns an iterator over all response messages coming from the
+        multiprocessing backend.  Messages that are not of the
+        expected type, are disregarded
+
+        :par ex_message: expected message type
+        """
+        pipe_ = self.getPipe()
+        for i in range(len(self.cache)):
+            message=pipe_.recv()
+            if message() != ex_message:
+                self.logger.warning("iterateResponses: got unexpected message type %s", message())
+                continue
+            slot=message["slot"]
+            yield slot, message
+
+
     def has_slot__(self, slot: int):
         if slot not in self.cache:
             self.logger.warning("getProfiles: slot %s not registered - will skip",
