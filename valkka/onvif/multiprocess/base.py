@@ -70,12 +70,12 @@ class OnvifProcess(AsyncBackMessageProcess):
         self.event_group.set(event_index)
 
 
-    def tailFromUri(self, uri):
+    def tailFromUri(self, uri, default_port = 554):
         # print(f"uri >{uri}<")
         # p = "\/\/[^\/]+\/(.+)" # i.e. get "/media/video3" from "rtsp://10.0.0.4/media/video3" # OLD
         # uri="rtsp://10.0.0.4:80/media/video3"
         p = "\/\/([^\/]*)\/(.*)"
-        match = re.search(p, uri) # group 1: ip-addr:port, group 2: tail
+        match = re.search(p, uri) # group 1: ip-addr:port, group 2: tail # TODO: get also the protocol: rtsp or http
         # print(match, match.group(1))
         if match:
             ip_port = match.group(1)
@@ -85,7 +85,7 @@ class OnvifProcess(AsyncBackMessageProcess):
             else:
                 ip = ip_port
                 # port = None
-                port=554 # better use the default port..
+                port=default_port # better use the default port..
             tail = match.group(2)
             # print("> tail, port", tail, port)
             # await self.send_out__(MessageObject("tail", slot=slot, value=tail, port=port))
@@ -98,6 +98,9 @@ class OnvifProcess(AsyncBackMessageProcess):
 
     @exclogmsg
     async def getTails__(self, slot: int = None, max_width = 1920, encodings: list = None):
+        """
+        :param encodings: a list of acceptable encoder values, in lowecase letters, i.e. ["h264"]
+        """
         f=self.f # shorthand
         services = self.cache[slot]["services"]
         Profiles = await services.media.ws_client.GetProfiles()
@@ -110,10 +113,11 @@ class OnvifProcess(AsyncBackMessageProcess):
         for Profile in Profiles:
             width_ = Profile.VideoEncoderConfiguration.Resolution.Width
             height_ = Profile.VideoEncoderConfiguration.Resolution.Height
+            token_ = Profile.token # a unique token identifying this Profile
             self.logger.debug("c__getTails : slot %s -> profile token: %s, width: %s", slot, Profile.token, width_)
             enc = Profile.VideoEncoderConfiguration.Encoding # i.e. 'H264'
             if width_ <= max_width:
-                if encodings and enc not in encodings:
+                if encodings and enc.lower() not in encodings:
                     continue
                 #if width_ > width:
                 # self.logger.debug("c__getTails : slot %s -> found better width %s", slot, width_)
@@ -129,17 +133,30 @@ class OnvifProcess(AsyncBackMessageProcess):
                 )
                 res=await services.media.ws_client.GetStreamUri(StreamSetup, token)
                 port, tail = self.tailFromUri(res.Uri)
+
+                ss_port = None
+                ss_tail = None
+                try:
+                    media_uri=await services.media.ws_client.GetSnapshotUri(token) # TODO: uh.. test again what happens if not avail.. 
+                except Exception as e:
+                    self.logger.info("c__getTails: slot %s doesn't support the GetSnapshotUri interface", slot)
+                else:
+                    self.logger.debug("c__getTails: slot %s snapshot URI: %s", slot, media_uri.Uri)
+                    ss_port, ss_tail = self.tailFromUri(media_uri.Uri, default_port=80) # URI for HTTP GET
+
                 if tail is not None:
                     self.logger.debug("c__getTails : slot %s append profile with width %s", slot, width_)
                     lis.append({
-                        "slot": slot,
-                        "enc": "H264",
+                        "enc": enc.lower(), # "h264",
                         "port": port,
                         "tail": tail,
                         "width": width_,
-                        "height": height_
+                        "height": height_,
+                        "snapshot_port": ss_port,
+                        "snapshot_tail": ss_tail
                     })
-        await self.send_out__(MessageObject("tails", value=lis))
+        sorted_lis = sorted(lis, key=lambda x: x['width']) # widest stream first
+        await self.send_out__(MessageObject("tails", slot=slot, value=lis))
 
         """
         if not token:
@@ -157,6 +174,8 @@ class OnvifProcess(AsyncBackMessageProcess):
         """
         
     async def c__getTails(self, slot: int = None, max_width = 1920, encodings: list = None):
+        """This part makes all calls to run concurrently
+        """
         asyncio.get_event_loop().create_task(self.getTails__(slot=slot, max_width=max_width, encodings = encodings))
 
 
@@ -263,6 +282,9 @@ class OnvifProcess(AsyncBackMessageProcess):
 
 
     def getTails(self, slot: int, max_width = 1920, encodings: list = None):
+        """
+        :param encodings: a list of acceptable encoder values, in lowecase letters, i.e. ["h264"]
+        """
         if not self.has_slot__(slot): return
         self.sendMessageToBack(MessageObject(
             "getTails", slot = slot, max_width = max_width, encodings = encodings))
@@ -301,84 +323,44 @@ def test1():
 
 
 def test2():
-    import copy
-    from valkka.discovery import runWSDiscovery, runARPScan
-
-    user="admin"
-    password="123456"
-
-    addresses = runWSDiscovery() 
-    # list of (ip, port), where port is the onvif port
-
-    print("WSDiscovery returned", addresses)
-
     p = OnvifProcess()
+    p.formatLogger(logging.DEBUG)
     pipe = p.getPipe() # returns a custom Duplex instance
     fd=pipe.getReadFd() # this can be used with select.select
     p.start()
+    # rtsp://admin:123456@10.0.0.3
+    # rtsp://admin:123456@10.0.0.4
+    p.register(
+        address = "10.0.0.3",
+        user = "admin",
+        password = "123456",
+        slot = 0
+    )
+    p.register(
+        address = "10.0.0.4",
+        user = "admin",
+        password = "123456",
+        slot = 1
+    )
 
-    print("registering")
-    cc=1
-    for ip, port in addresses:
-        p.register(
-            address = ip,
-            user = user,
-            port = port,
-            password = password,
-            slot = cc
-        )
-        cc+=1
-
-    print("test onvif connections")
-    # test all onvif connections in parallel
-    for slot, camera in p.cache.items():
+    # search for succesfull onvif tests
+    for slot in p.cache.keys():
         p.testOnvif(slot=slot)
+    for slot, message in p.iterateResponses("OnvifStatus"):
+        ok = message["All"] # status of all relevant/basic onvif services
+        ip = p.cache[slot]["address"]
+        onvif_port = p.cache[slot]["port"]
+        print("Onvif connection at", ip, ":", onvif_port, "OK")
 
-    # read results
-    ok_slots = []
-    for i in range(len(p.cache)):
-        message=pipe.recv()
-        if message() != "OnvifStatus":
-            continue
-        slot=message["slot"] # int
-        ok=message["All"] # boolean
-        if ok:
-            ok_slots.append(slot)
-
-    print("slots with ok onvif:", ok_slots)
-    # p.stop(); return
-
-    # request probing the availability of H264
-    # and get their "tails" if possible
-    for slot in ok_slots:
-        p.getTails(slot)
-
-    # read results
-    good_streams = {} # key: ipv4 address, value: rtsp address (with rtsp://,tail,etc.)
-    for slot in ok_slots:
-        message=pipe.recv()
-        if message() != "tail":
-            continue # one of the getTails requests didn't work out
-        if message["value"]:
-            tail = message["value"] # we got the tail!
-            port = message["port"]
-            if port is None:
-                port = 554
-            print("got tail", tail)
-            ip = p.cache[slot]['address']
-            rtsp_adr = f"rtsp://{user}:{password}@{ip}:{port}/{tail}"
-            good_streams[ip] = rtsp_adr
+    # get stream tails
+    for slot in p.cache.keys():
+        p.getTails(slot, max_width=1920, encodings = ["h264"])
+    for slot, message in p.iterateResponses("tails"):
+        ip = p.cache[slot]["address"]
+        tails=message["value"]
+        print("Onvif connection at", ip, "tails:", tails)
 
     p.stop()
-
-    arp_list = runARPScan(exclude_list=good_streams.keys())
-    print("arp scan returned", arp_list)
-    for ip, port in arp_list:
-        rtsp_adr=f"rtsp://{user}:{password}@{ip}:{port}"
-        good_streams[ip] = rtsp_adr
-    
-    for ip, rtsp in good_streams.items():
-        print(rtsp)
 
 
 if __name__ == "__main__":

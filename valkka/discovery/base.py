@@ -117,6 +117,9 @@ async def probe(ip, port):
         traceback.print_exc()
         ok = False
     else:
+        # TODO: should distinguish between:
+        # 401 Unauthorized
+        # 200 Ok
         if verbose: print("arp-scan probe: parsing response for", ip)
         header, res = parse_http_resp(res.decode("utf-8").lower())
         if verbose: print("arp-scan probe: reply for", ip, ":", header, res)
@@ -266,6 +269,98 @@ def dummy_handler(signum, frame):
     pass
 
 
+def ARPScanInterface(name, ip, iplen, max_time_per_interface = 10, exclude_list = [], verbose=False) -> list:
+    """Parallelizable arp-scan on a certain interface
+    """
+    reg = re.compile("^(\d*\.\d*.\d*.\d*)") # match ipv4 address
+    comst = f"arp-scan -g -retry=2 --interface={name} {ip}/{iplen}" # e.g. eno1 192.168.30.149/24
+    if verbose: print("runARPScan: starting for", comst)
+    stdout = ""
+    """old version
+    try:
+        with Popen(comst.split(), stdout=PIPE, stderr=PIPE, bufsize=1, universal_newlines=True) as p:
+            for line in p.stdout:
+                if verbose: print(">", line.strip())
+                stdout += line
+    except FileNotFoundError:
+        print(f"arp-scan failed for '{comst}'.  Install with 'sudo apt-get install arp-scan'.  You also need extra rights to run it: 'sudo chmod u+s /usr/sbin/arp-scan'")
+    except Alarm:
+        print(f"arp-scan for '{comst}' took more than n secs - aborting")
+        continue
+    if p.returncode > 0:
+        print(f"arp-scan failed for  '{comst}'.  You might need extra rights to run it: 'sudo chmod u+s /usr/sbin/arp-scan'")
+        # print("arp-scan error:", stderr.decode("utf-8"))
+    # parse the output of arp-scan
+    # for line in stdout.decode("utf-8").split("\n"):
+    """
+    # as per: https://stackoverflow.com/questions/12419198/python-subprocess-readlines-hangs
+    # the ONLY way to read process output on-the-fly
+    master_fd, slave_fd = pty.openpty()
+    # signal.alarm(max_time_per_interface) # in secs
+    try:
+        proc = Popen(comst.split(), stdin=slave_fd, stdout=slave_fd, stderr=STDOUT, close_fds=True)
+    except FileNotFoundError:
+        print(f"No arp-scan found: install with 'sudo apt-get install arp-scan'.  You also need extra rights to run it: 'sudo chmod u+s /usr/sbin/arp-scan'")
+        return []
+    os.close(slave_fd)
+    timecount = 0
+    try:
+        while 1:
+            if timecount > max_time_per_interface:
+                print(f"WARNING: arp-scan '{comst}' took more than {max_time_per_interface} secs - aborting")
+                break        
+            t0 = time.time()
+            try:
+                r, w, e = select.select([ master_fd ], [], [], 1)
+                dt = time.time() - t0
+                timecount += dt
+                if verbose: print("timecount>", timecount)
+                if master_fd in r:
+                    data = os.read(master_fd, 512)
+                else:
+                    continue
+            except OSError as e:
+                if e.errno != errno.EIO:
+                    raise
+                break # EIO means EOF on some systems
+            else:
+                if not data: # EOF
+                    break
+                # if verbose: print('>' + repr(data))
+                if verbose: print('>', data.decode("utf-8"))
+                stdout += data.decode("utf-8")
+    finally:
+        os.close(master_fd)
+        if proc.poll() is None:
+            proc.kill()
+        proc.wait()
+    if proc.returncode > 0:
+        print("arp-scan error:", stdout)
+        print("You might need to grant extra rights with: 'sudo chmod u+s /usr/sbin/arp-scan'")
+        return []
+
+    lis = []
+    for line in stdout.split("\n"):
+        l = line.split()
+        # print(">>", l)
+        if len(l) > 2:
+            col = l[0]
+            m = reg.match(col)
+            if m is None:
+                continue
+            else:
+                ip = col[m.start(1):m.end(1)]
+                # print(ip)
+                if ip not in exclude_list:
+                    if verbose: print("runARPScan: appending", ip)
+                    lis.append(ip)
+    if verbose: print("runARPScan: finished for", comst)
+
+    if len(lis) < 1:
+        if verbose: print("arp-scan: did not find anything")
+    return lis
+
+
 def runARPScan(exclude_list = [], exclude_interfaces = [], max_time_per_interface=10, verbose=False) -> list:
     """brute-force port 554 & 8554 scan & RTSP OPTIONS test ping in parallel
 
@@ -284,7 +379,6 @@ def runARPScan(exclude_list = [], exclude_interfaces = [], max_time_per_interfac
     """
     # verbose = True
     # verbose = False
-    reg = re.compile("^(\d*\.\d*.\d*.\d*)") # match ipv4 address
     lis = []
     # signal.signal(signal.SIGALRM, alarm_handler) # only works in main thread and this might run in a multithread
     for name, subnets in getInterfaces().items():
@@ -292,88 +386,9 @@ def runARPScan(exclude_list = [], exclude_interfaces = [], max_time_per_interfac
             continue
         print("runARPScan: scanning interface", name)
         for ip, iplen in subnets:
-            # print(name+" "+ip+"/"+iplen) # stdbuf -oL 
-            comst = f"arp-scan -g -retry=2 --interface={name} {ip}/{iplen}" # e.g. eno1 192.168.30.149/24
-            if verbose: print("runARPScan: starting for", comst)
-            stdout = ""
-            """
-            try:
-                with Popen(comst.split(), stdout=PIPE, stderr=PIPE, bufsize=1, universal_newlines=True) as p:
-                    for line in p.stdout:
-                        if verbose: print(">", line.strip())
-                        stdout += line
-            except FileNotFoundError:
-                print(f"arp-scan failed for '{comst}'.  Install with 'sudo apt-get install arp-scan'.  You also need extra rights to run it: 'sudo chmod u+s /usr/sbin/arp-scan'")
-            except Alarm:
-                print(f"arp-scan for '{comst}' took more than n secs - aborting")
-                continue
-            if p.returncode > 0:
-                print(f"arp-scan failed for  '{comst}'.  You might need extra rights to run it: 'sudo chmod u+s /usr/sbin/arp-scan'")
-                # print("arp-scan error:", stderr.decode("utf-8"))
-            # parse the output of arp-scan
-            # for line in stdout.decode("utf-8").split("\n"):
-            """
-            # as per: https://stackoverflow.com/questions/12419198/python-subprocess-readlines-hangs
-            # the ONLY way to read process output on-the-fly
-            master_fd, slave_fd = pty.openpty()
-            # signal.alarm(max_time_per_interface) # in secs
-            proc = Popen(comst.split(), stdin=slave_fd, stdout=slave_fd, stderr=STDOUT, close_fds=True)
-            os.close(slave_fd)
-            timecount = 0
-            try:
-                while 1:
-                    if timecount > max_time_per_interface:
-                        print(f"WARNING: arp-scan '{comst}' took more than {max_time_per_interface} secs - aborting")
-                        break        
-                    t0 = time.time()
-                    try:
-                        r, w, e = select.select([ master_fd ], [], [], 1)
-                        dt = time.time() - t0
-                        timecount += dt
-                        if verbose: print("timecount>", timecount)
-                        if master_fd in r:
-                            data = os.read(master_fd, 512)
-                        else:
-                            continue
-                    except OSError as e:
-                        if e.errno != errno.EIO:
-                            raise
-                        break # EIO means EOF on some systems
-                    else:
-                        if not data: # EOF
-                            break
-                        # if verbose: print('>' + repr(data))
-                        if verbose: print('>', data.decode("utf-8"))
-                        stdout += data.decode("utf-8")
-            finally:
-                os.close(master_fd)
-                if proc.poll() is None:
-                    proc.kill()
-                proc.wait()
-            # cancel the alarm:
-            # print("cancel alarm")
-            # signal.alarm(0)
-
-            for line in stdout.split("\n"):
-                l = line.split()
-                # print(">>", l)
-                if len(l) > 2:
-                    col = l[0]
-                    m = reg.match(col)
-                    if m is None:
-                        continue
-                    else:
-                        ip = col[m.start(1):m.end(1)]
-                        # print(ip)
-                        if ip not in exclude_list:
-                            if verbose: print("runARPScan: appending", ip)
-                            lis.append(ip)
-            if verbose: print("runARPScan: finished for", comst)
-
-    if len(lis) < 1:
-        if verbose: print("arp-scan: did not find anything")
-        return []
-
+            # print(name+" "+ip+"/"+iplen) # stdbuf -oL
+            lis += ARPScanInterface(name, ip, iplen, max_time_per_interface, exclude_list, verbose=verbose)
+    
     coros = [probe(ip, 554) for ip in lis]
     coros += [probe(ip, 8554) for ip in lis]
 
@@ -396,11 +411,6 @@ def runARPScan(exclude_list = [], exclude_interfaces = [], max_time_per_interfac
 
     loop.close()
     return ips
-
-
-def runARPScanParallel(exclude_list = [], exclude_interfaces = [], max_time_per_interface=10, verbose=False) -> list:
-    pass
-    # TODO!    
 
 
 if __name__ == "__main__":

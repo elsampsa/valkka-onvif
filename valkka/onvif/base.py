@@ -2,7 +2,7 @@
 
 Copyright 2017-2019 Valkka Security Ltd. and Sampsa Riikonen.
 
-Authors: Petri Eränkö <petri.eranko@dasys.fi>
+Authors: Sampsa Riikonen <sampsa.riikonen@iki.fi>
 
 This particular file, referred below as "Software", is licensed under the MIT LICENSE:
 

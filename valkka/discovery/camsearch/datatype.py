@@ -2,8 +2,7 @@ from dataclasses import dataclass, fields
 
 @dataclass
 class Onvif:
-    stream_tail: str = None # stream tail
-    snapshot_tail: str = None # snapshot tail
+    streams: list = None # list of all found stream tail
 
 @dataclass
 class Camera:
@@ -26,9 +25,13 @@ class Camera:
         if self.onvif is None:
             st+="onvif".ljust(15)+": <none>\n"
         else:
+            """
             stream_tail = self.onvif.stream_tail if self.onvif.stream_tail is not None else "<none>"
             snapshot_tail = self.onvif.snapshot_tail if self.onvif.snapshot_tail is not None else "<none>"
             st+=f"onvif".ljust(15)+f": stream_tail: {stream_tail} snapshot_tail: {snapshot_tail}\n"
+            """
+            streams = self.onvif.streams if self.onvif.streams is not None else "<none>"
+            st+=f"onvif".ljust(15)+f": streams: {streams}"
         return st
 
 # Create an instance of Camera
