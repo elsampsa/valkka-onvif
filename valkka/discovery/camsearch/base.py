@@ -112,11 +112,12 @@ def N2_ArpScan(cams: dict, user="admin", password="123456"):
     for ip, rtsp_port in runARPScan(exclude_list=list(cams.keys())):
         # print("arp>", ip)
         ips.append(ip)
+        uri = f"rtsp://{user}:{password}@{ip}:{rtsp_port}"
         cams[ip] = Camera(
             ip = ip,
             user = user,
             password = password,
-            uri = f"rtsp://{user}:{password}@{ip}:{rtsp_port}"
+            uri = uri
         )
     for ip, onvif_port in OnvifSearch(ips): # tries onvif ports and test connection on them
         if ip in cams:

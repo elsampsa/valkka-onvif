@@ -83,7 +83,8 @@ async def probe(ip, port):
         print("arp-scan probe: trying", ip)
 
     writer = None
-    ok = True
+    ok = True # got a response to rtsp describe
+    success = False # response to rtsp describe was 200 ok -> could authenticate!
     st = options_str % (ip, port)
     st_ = st.encode("utf-8")
     try:
@@ -123,16 +124,22 @@ async def probe(ip, port):
         if verbose: print("arp-scan probe: parsing response for", ip)
         header, res = parse_http_resp(res.decode("utf-8").lower())
         if verbose: print("arp-scan probe: reply for", ip, ":", header, res)
-        # if header.find("200 ok") > -1: # most likely not authorized!
+        # if header.find("200 ok") > -1: # NOTE: this is ALWAYS true - OPTIONS string doesn't require auth
         if header.find("rtsp") > -1:
             if verbose:
                 print("\nSuccess at %s\n" % (ip))
-            pass
+            """
+            if header.find("200") > -1:
+                success = True
+            else:
+                success = False
+            """
         else:
             ok = False
 
     writer.close()
     if ok:
+        # return ip, port, success # would be nice to know if the auth works or not..
         return ip, port
         
 
@@ -405,12 +412,12 @@ def runARPScan(exclude_list = [], exclude_interfaces = [], max_time_per_interfac
 
     ips = []
     for task in finished:
-        ip = task.result()
+        ip = task.result() # ip, port, success
         if ip is not None:
             ips.append(ip)
 
     loop.close()
-    return ips
+    return ips # list of (ip, port, success)
 
 
 if __name__ == "__main__":
