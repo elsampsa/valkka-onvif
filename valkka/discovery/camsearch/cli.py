@@ -18,23 +18,21 @@ def process_cl_args():
         usage=(
             f'{comname} [options]\n'
             '\n'
-            'A more advanced camera search using combinations of WSDiscovery, arp-scan and OnVif probing'
+            'Camera search using a combination of WSDiscovery, arp-scan and OnVif probing'
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument("--user", action="store", help="username to try", default="admin", type=str,
         required=False)
     parser.add_argument("--passwd", action="store", help="password to try", default="123456", type=str,
-        required=False)
-    parser.add_argument("--csv", action="store", help="(optional) name of csv file to dump the results", default=None, type=str,
         required=False)    
-    parser.add_argument("--yaml", action="store", help="(optional) name of valkka-streamer compatible yaml config file", default=None, type=str,
+    parser.add_argument("--yaml", action="store", help="name of result yaml file", default="camsearch.yaml", type=str,
         required=False)
-    parser.add_argument("--width", action="store", help="onvif search for stream profiles with this max. image width", default=7680, type=int,
+    parser.add_argument("--width", action="store", help="onvif search for stream profiles with this max. image width", default=1920, type=int,
         required=False)
     parser.add_argument("--debug", action="store_true", help="enable debugging output for OnvifProcess", default = False)
     parser.add_argument("--shutup", action="store_true", help="minimal output from OnvifProcess", default = False)
-    parser.add_argument("--h264", action="store_true", help="Search only for H264 profiles", default = False)
+    parser.add_argument("--h264", action="store_true", help="Search only for H264 profiles", default = True)
     parsed, unparsed = parser.parse_known_args()
     for arg in unparsed:
         print("Unknow option", arg)
@@ -59,10 +57,14 @@ def main():
     elif pars.shutup:
         confLogger(logging.getLogger("OnvifProcess.onvif"), logging.CRITICAL)
 
-    encodings=["h264"] if pars.h264 else encodings=None
-    cams = run(user=pars.user, password=pars.passwd, encodings=encodings, width=pars.width)
-    
+    encodings=["h264"] if pars.h264 else None
+    cams = run(user=pars.user, password=pars.passwd, encodings=encodings, width=pars.width, verbose=pars.debug)
+    lis = []
+    for camera in cams.values(): # datatype.Camera object
+        lis.append(camera.toDict())
 
+    with open(pars.yaml, "w") as f:
+        yaml.dump(lis, f, default_flow_style=False)
     
 if __name__ == "__main__":
     main()

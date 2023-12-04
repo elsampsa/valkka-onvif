@@ -1,4 +1,4 @@
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, fields, asdict
 
 @dataclass
 class Onvif:
@@ -7,6 +7,7 @@ class Onvif:
 @dataclass
 class Camera:
     ip: str = None
+    mac: str = None
     user: str = "admin"
     password: str = "123456"
     uri: str = None # complete rtsp uri # either default value of something optimal found by onvif
@@ -16,7 +17,7 @@ class Camera:
 
     def __str__(self):
         st=""
-        for fname in ["ip", "user", "password", "uri", "snapshot_uri", "onvif_port"]:
+        for fname in ["ip", "mac", "user", "password", "uri", "snapshot_uri", "onvif_port"]:
             val = getattr(self, fname)
             if val is None:
                 val = "<none>"
@@ -34,11 +35,17 @@ class Camera:
             st+=f"onvif".ljust(15)+f": streams: {streams}"
         return st
 
+    def toDict(self):
+        return asdict(self) 
+
 # Create an instance of Camera
 # my_camera = Camera(uri='rtsp://example.com', onvif=Onvif())
 
 if __name__ == "__main__":
     cam = Camera()
     print(cam)
-    cam.onvif = Onvif(stream_tail="/kokkelis")
+    cam.onvif = Onvif()
     print(cam)
+    print(asdict(cam))
+
+

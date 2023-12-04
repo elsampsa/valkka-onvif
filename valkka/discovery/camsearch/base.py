@@ -1,4 +1,4 @@
-from valkka.discovery import runWSDiscovery, runARPScan
+from valkka.discovery import runWSDiscovery, runARPScan, ARPIP2Mac
 from valkka.onvif.multiprocess import OnvifProcess
 from valkka.discovery.camsearch.datatype import Onvif, Camera
 import logging
@@ -90,16 +90,20 @@ def N1_WSDiscovery(user="admin", password="123456") -> dict:
     """
     cams = {}
     for ip, onvif_port in runWSDiscovery(): # list of (ip, onvif-port) tuples
+        res = ARPIP2Mac(ip)
+        mac=res.mac
         cams[ip] = Camera(
                 ip = ip,
+                mac = mac,
                 user = user,
                 password = password,
-                # set default rtsp uri
-                uri=f"rtsp://{user}:{password}@{ip}:554",
+                # do not set URI at this stage .. we still have no idea if there is rtsp server
+                # as no arp-scan has been made and we haven't asked the uri from onvif neither
+                # uri=f"rtsp://{user}:{password}@{ip}:554",
                 onvif_port = onvif_port
             )
     # check onvif connections
-    OnvifTest(cams) # now some of them have .onvif member set to OnVif()
+    OnvifTest(cams) # after this, some of them have .onvif member set to OnVif()
     return cams
 
 
@@ -109,17 +113,31 @@ def N2_ArpScan(cams: dict, user="admin", password="123456"):
     :par cams: key: ip address, value: Camera object
     """
     ips = []
-    for ip, rtsp_port in runARPScan(exclude_list=list(cams.keys())):
-        # print("arp>", ip)
-        ips.append(ip)
+    # for res in runARPScan(exclude_list=list(cams.keys())):
+    for res in runARPScan():
+        # res is valkka.discover.base.ArpRTSPScanResult object
+        ip = res.ip
+        rtsp_port = res.port
+        mac = res.mac
         uri = f"rtsp://{user}:{password}@{ip}:{rtsp_port}"
-        cams[ip] = Camera(
-            ip = ip,
-            user = user,
-            password = password,
-            uri = uri
-        )
-    for ip, onvif_port in OnvifSearch(ips): # tries onvif ports and test connection on them
+        if ip in cams:
+            # ok, now we have a tentative rtsp address for the camera
+            # found in the onvif stage
+            cams[ip].uri = uri
+        else:    
+            # a new camera that was not found in the wsdiscovery phase
+            cams[ip] = Camera(
+                ip = ip,
+                mac = mac,
+                user = user,
+                password = password,
+                uri = uri 
+            )
+            ips.append(ip)
+    # for the ip addresses that responded to rtsp options probe
+    # (but that were not find in the wsdiscovery phase)
+    # try some onvif ports and test connection on them
+    for ip, onvif_port in OnvifSearch(ips): 
         if ip in cams:
             cams[ip].onvif_port = onvif_port
             cams[ip].onvif = Onvif()
@@ -175,32 +193,39 @@ def printCams(cams):
         print()
 
 
-def run(user="admin", password="123456", encodings=None, width=1920) -> list:
+def run(user="admin", password="123456", encodings=None, width=1920, verbose=False) -> list:
     """Returns a list of Camera objects
     """
     """1. Find cameras with wsdiscovery.  Test onvif connection to all cameras found:
     """
+    print("N1_WSDiscovery")
     cams = N1_WSDiscovery(user=user, password=password)
-    print("CAMERAS AFTER N1")
-    printCams(cams)
-    print()
-    
-    """2. Do arp-scan and rtsp describe probe to all arp found ip addresses excluding current cams
-    For all cams found this way, an onvif-probe performed, i.e. test onvif connection to several possible
-    onvif ports:
+    if verbose:
+        print("CAMERAS AFTER N1")
+        printCams(cams)
+        print()
+        
+    """2. Do arp-scan and rtsp options probe to all arp found ip addresses excluding current cams
+    For all cams found this way, an onvif-probe is performed, i.e. test onvif connection to several possible
+    onvif ports
     """
+    print("N2_ArpScan")
     N2_ArpScan(cams)
-    print("CAMERAS AFTER N2")
-    printCams(cams)
-    print()
+    if verbose:
+        print("CAMERAS AFTER N2")
+        printCams(cams)
+        print()
 
     """3. Run over all cameras, for the ones with OK onvif connection, try finding optimal stream URI
     and also the static image URI
     """
+    print("N3_GetStreamURIs")
     N3_GetStreamURIs(cams, width=width, encodings=encodings)
-    print("CAMERAS AFTER N3")
-    printCams(cams)
+    if verbose:
+        print("CAMERAS AFTER N3")
+        printCams(cams)
 
+    return cams
 
 if __name__ == "__main__":
     run()

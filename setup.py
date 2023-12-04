@@ -29,8 +29,7 @@ setup(
 
     entry_points={
         'console_scripts': [
-            'valkka-camsearch = valkka.discovery.camsearch.search_cli:main',
-            'valkka-camprobe = valkka.discovery.camsearch.probe_cli:main'
+            'valkka-camsearch = valkka.discovery.camsearch.cli:main',
         ]
     },
 

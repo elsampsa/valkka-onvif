@@ -11,6 +11,14 @@ From pypi with:
 pip install -U valkka-onvif
 ```
 
+## API
+
+```
+
+
+```
+
+
 ## Test studio
 
 You can play around with onvif using either ipython cli client or jupyter notebook:
@@ -31,6 +39,9 @@ After installing this package, please try
 ```
 valkka-camsearch -h
 ```
+You can use that program to produce yaml file reports on the cameras found in your system.
+
+For more details on the output format, see [valkka/discovery/camsearch/yaml_format.md](valkka/discovery/camsearch/yaml_format.md)
 
 ## Author & Copyright
 
@@ -43,4 +54,3 @@ Contains code from the WSDiscovery package: please see directory [valkka/discove
 MIT 
 
 For WSDiscovery, LGPL, see please see directory [valkka/discovery/wsdiscovery/](valkka/discovery/wsdiscovery/)
-
