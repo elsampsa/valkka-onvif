@@ -2,7 +2,7 @@
 
 Copyright 2017-2019 Valkka Security Ltd. and Sampsa Riikonen.
 
-Authors: Petri Eränkö <petri.eranko@dasys.fi>
+Authors: Sampsa Riikonen <sampsa.riikonen@iki.fi>
 
 This particular file, referred below as "Software", is licensed under the MIT LICENSE:
 
@@ -19,7 +19,7 @@ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEAL
 @file    base.py
 @author  Sampsa Riikonen
 @date    2023
-@version 1.6.3 
+@version 1.6.5 
 
 @brief   Simple classes for Zeep-based OnVif service clients
 """

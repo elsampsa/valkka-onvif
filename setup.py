@@ -2,7 +2,7 @@ from setuptools import setup, Extension, find_packages
 import sys
 
 # modified by setver.bash
-version = '1.6.3'
+version = '1.6.5'
 
 setup(
     name = "valkka-onvif",
@@ -20,7 +20,8 @@ setup(
         'valkka.onvif.multiprocess',
         'valkka.discovery',
         'valkka.discovery.wsdiscovery',
-        'valkka.discovery.wsdiscovery.actions'
+        'valkka.discovery.wsdiscovery.actions',
+        'valkka.discovery.camsearch',
         ],
     
     include_package_data=True, # # conclusion: NEVER forget this : files get included but not installed
@@ -28,7 +29,7 @@ setup(
 
     entry_points={
         'console_scripts': [
-            'valkka-camsearch = valkka.discovery.cli.camsearch:main'
+            'valkka-camsearch = valkka.discovery.camsearch.cli:main',
         ]
     },
 

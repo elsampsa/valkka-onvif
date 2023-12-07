@@ -28,7 +28,7 @@ def process_cl_args():
         default=True)
     parser.add_argument("--user", action="store", help="username to try", default="admin", type=str,
         required=False)
-    parser.add_argument("--passwd", action="store", help="password to try", default="12345", type=str,
+    parser.add_argument("--passwd", action="store", help="password to try", default="123456", type=str,
         required=False)
     parser.add_argument("--comm", action="store", help="(optional) launch a command (say, vlc) with the detected rtsp address", default=None, type=str,
         required=False)
