@@ -1,4 +1,4 @@
-from valkka.discovery import runWSDiscovery, runARPScan, ARPIP2Mac
+from valkka.discovery import runWSDiscovery, runARPScan, ARPIP2Mac, getARPCache
 from valkka.onvif.multiprocess import OnvifProcess
 from valkka.discovery.camsearch.datatype import Onvif, Camera
 import logging
@@ -89,12 +89,13 @@ def N1_WSDiscovery(user="admin", password="123456") -> dict:
     Returns dictionary with key: ip address, value: Camera object
     """
     cams = {}
-    for ip, onvif_port in runWSDiscovery(): # list of (ip, onvif-port) tuples
-        res = ARPIP2Mac(ip)
-        mac=res.mac
+    lis = runWSDiscovery() # list of (ip, onvif-port) tuples
+    getARPCache(update=True) # ARPIP2Mac uses the arp cache so let's read it in again
+    for ip, onvif_port in lis:
+        res=ARPIP2Mac(ip)
         cams[ip] = Camera(
                 ip = ip,
-                mac = mac,
+                mac = res.mac,
                 user = user,
                 password = password,
                 # do not set URI at this stage .. we still have no idea if there is rtsp server
@@ -204,7 +205,8 @@ def run(user="admin", password="123456", encodings=None, width=1920, verbose=Fal
         print("CAMERAS AFTER N1")
         printCams(cams)
         print()
-        
+    # return cams
+
     """2. Do arp-scan and rtsp options probe to all arp found ip addresses excluding current cams
     For all cams found this way, an onvif-probe is performed, i.e. test onvif connection to several possible
     onvif ports

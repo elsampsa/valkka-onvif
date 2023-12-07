@@ -19,23 +19,25 @@ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEAL
 @file    base.py
 @author  Sampsa Riikonen
 @date    2019
-@version 1.6.3 
+@version 1.6.5 
 
 @brief   Discovery module for onvif cameras, using wsdiscovery and brute-force scan
 """
-from multiprocessing import Process, Manager
-from dataclasses import dataclass
+# from multiprocessing import Process, Manager
+# from dataclasses import dataclass
 import sys, time
-import signal
-import os, errno, select
+# import signal
+# import os, errno, select
 import inspect
 import asyncio
 import re
 import traceback
-from subprocess import Popen, PIPE, check_output, CalledProcessError, STDOUT
 import pty
 
 from valkka.discovery.wsdiscovery import WSDiscovery, QName, Scope
+from valkka.discovery.ipconfig import getInterfaces
+from valkka.discovery.probe import probe
+from valkka.discovery.arp import runARPScan_
 
 """
 - Run WSDiscovery
@@ -46,122 +48,9 @@ from valkka.discovery.wsdiscovery import WSDiscovery, QName, Scope
   ws-discovery results having /onvif/ in the device list
 """
 
-options_str = """OPTIONS rtsp://%s:%i RTSP/1.0\r
-CSeq: 1\r
-User-Agent: libValkka\r
-\r
-\r"""
-
-@dataclass
-class ArpRTSPScanResult:
-    """Scan results from different phases:
-    - arp-scan
-    - RTSP OPTIONS probe
-    - TODO: RTSP DESCRIBE probe with provided user and passwd
+def runWSDiscovery() -> list:
+    """Returns a list of tuples (ip, port)
     """
-    interface: str = None # interface name
-    mac: str = None # mac address
-    ip: str = None # ip address
-    port: int = None # rtsp port with successfull RTSP OPTIONS probe
-    success: bool = False
-
-    def __str__(self):
-        return (
-            f"ArpRTSPScanResult(interface={self.interface}, "
-            f"mac={self.mac}, ip={self.ip}, port={self.port}, success={self.success})"
-        )
-
-
-def parse_http_resp(resp: str):
-    reg = re.compile("(^\S*):(.*)")
-    fields = resp.split("\r\n")
-    output = {}
-    for field in fields[1:]: # ignore "GET / HTTP/1.1" and the like
-        try:
-            m = reg.match(field)
-            if m is None:
-                continue
-            key = field[m.start(1):m.end(1)]
-            value = field[m.start(2):m.end(2)]
-        except IndexError:
-            continue
-        else:
-            output[key] = value
-    return fields[0], output
-
-
-
-async def probe(ip: str, port: int) -> tuple: # ip, port
-    """Send an RTSP OPTIONS request to ip & port
-
-    If succesfull, returns (ip, port), otherwise returns None
-    """
-    verbose = False
-    # verbose = True
-    timeout = 3
-
-    if verbose:
-        print("arp-scan probe: trying", ip)
-    writer = None
-    ok = True # got a response to rtsp describe
-    st = options_str % (ip, port)
-    st_ = st.encode("utf-8")
-    try:
-        reader, writer = await asyncio.wait_for(
-            asyncio.open_connection(ip, port), timeout = timeout)
-    except asyncio.TimeoutError:
-        # traceback.print_exc()
-        if verbose: print("arp-scan probe: timeout", ip)
-        ok = False
-    except ConnectionRefusedError:
-        if verbose: print("arp-scan probe: connection refused", ip)
-        # traceback.print_exc()
-        ok = False
-    except Exception as e:
-        if verbose: print("arp-scan probe: exception", e)
-        # traceback.print_exc()
-        ok = False
-    
-    if not ok:
-        if writer is not None: writer.close()
-        return None
-
-    if verbose: print("arp-scan probe: writing", ip)
-    writer.write(st_)
-    try:
-        res = await asyncio.wait_for(reader.read(1024), timeout = timeout)
-    except asyncio.TimeoutError:
-        if verbose: print("arp-scan probe: timeout at port", port)
-        ok = False
-    except Exception as e:
-        traceback.print_exc()
-        ok = False
-    else:
-        if verbose: print("arp-scan probe: parsing response for", ip)
-        header, res = parse_http_resp(res.decode("utf-8").lower())
-        if verbose: print("arp-scan probe: reply for", ip, ":", header, res)
-        # if header.find("200 ok") > -1: 
-        # NOTE: this is ALWAYS true - OPTIONS string doesn't require auth
-        if header.find("rtsp") > -1:
-            if verbose:
-                print("\nSuccess at %s\n" % (ip))
-            """
-            if header.find("200") > -1:
-                res.success = True
-            else:
-                res.success = False
-            """
-        else:
-            ok = False
-
-    writer.close()
-    if ok: 
-        return ip, port
-    else:
-        return None
-
-
-def runWSDiscovery():
     reg = "^http:\/\/([^\/]*)\/onvif"
     wsd = WSDiscovery()
     wsd.start()
@@ -200,270 +89,17 @@ def runWSDiscovery():
     return ip_addresses
 
 
-
-def parse_ip_address_output(output) -> dict:
-    """Sample output:
-    
-    ::
-    
-        {'br-2ad50d95054a': {'attributes': 'NO-CARRIER,BROADCAST,MULTICAST,UP',
-                         'subnets': [('172.19.0.1', '16')]},
-         'br-2cddc3bcd5fe': {'attributes': 'NO-CARRIER,BROADCAST,MULTICAST,UP',
-                             'subnets': [('172.23.0.1', '16')]},
-         'br-5100bab9ac22': {'attributes': 'NO-CARRIER,BROADCAST,MULTICAST,UP',
-                             'subnets': [('172.24.0.1', '16')]},
-         'br-52b32b08932e': {'attributes': 'NO-CARRIER,BROADCAST,MULTICAST,UP',
-                             'subnets': [('172.20.0.1', '16')]},
-         'br-7d96055bc7ee': {'attributes': 'NO-CARRIER,BROADCAST,MULTICAST,UP',
-                             'subnets': [('172.18.0.1', '16')]},
-         'docker0': {'attributes': 'NO-CARRIER,BROADCAST,MULTICAST,UP',
-                     'subnets': [('172.17.0.1', '16')]},
-         'enx4865ee147a39': {'attributes': 'BROADCAST,MULTICAST,UP,LOWER_UP',
-                             'subnets': []},
-         'lo': {'attributes': 'LOOPBACK,UP,LOWER_UP', 'subnets': [('127.0.0.1', '8')]},
-         'wlp2s0': {'attributes': 'BROADCAST,MULTICAST,UP,LOWER_UP',
-                    'subnets': [('192.168.1.135', '24')]}}
-    
-    P. S. Thanks chat-gpt!
-    """
-    interfaces = {}
-    current_interface = None
-
-    for line in output.splitlines():
-        line = line.strip()
-
-        # Skip empty lines
-        if not line:
-            continue
-
-        # Check if it's a new interface line
-        if line[0].isdigit():
-            parts = line.split(": ")
-            interface_name = parts[1].split()[0]
-            current_interface = interface_name
-            interfaces[current_interface] = {'subnets': [], 'attributes': ''}
-            attributes = re.findall(r'<([^>]+)>', line)[0]
-            interfaces[current_interface]['attributes'] = attributes
-
-        
-        # Check for subnets information within the interface
-        elif line.startswith('inet '):
-            if current_interface is not None:
-                subnet_info = re.findall(r'inet ([\d.]+)/(\d+)', line)
-                for subnet, mask in subnet_info:
-                    interfaces[current_interface]['subnets'].append((subnet, mask))
-
-    return interfaces
-
-
-def getInterfaces() -> dict:
-    """Returns all 'normal' interfaces (excluding NO-CARRIER and LOOPBACK interfaces)
-    
-    Example output:
-    
-    ::
-    
-        {'wlp2s0': [('192.168.1.135', '24')], 'enx4865ee147a39': []}
-    
-    """
-    try:
-        ip_output = check_output(['ip', 'address'], universal_newlines=True)
-        interfaces = parse_ip_address_output(ip_output)
-        # pprint(interfaces)
-    except CalledProcessError as e:
-        print(f"Error executing 'ip address' command: {e}")
-        return {}
-    
-    dic={}
-    for name, interface in interfaces.items():
-        # print(">",name, interface["attributes"])
-        if "NO-CARRIER" not in interface["attributes"] and "LOOPBACK" not in interface["attributes"]:
-            # print(name, interface["subnets"])
-            dic[name] = interface["subnets"]
-    return dic
-
-
-
-class Alarm(Exception):
-    pass
-
-def alarm_handler(signum, frame):
-    raise Alarm
-
-def dummy_handler(signum, frame):
-    pass
-
-
-def ARPIP2Mac(ip) -> ArpRTSPScanResult:
-    """Given an ip address, returns ArpRTSPScanResult.  None if there was an error.
-    """
-    interface_pattern = re.compile(r'Interface: ([^,]+), type: (\S+), MAC: (\S+), IPv4: (\S+)')
-    ip_mac_pattern = re.compile(r'(\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b)\s+([0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2})')
-
-    comst=f"arp-scan {ip}"
-    p = Popen(comst.split(),
-        stdout=PIPE,
-        stderr=PIPE,
-        text=True  # Use text=True for text output (Python 3.7 and later)
-    )
-
-    # Wait for the process to finish and get the output
-    stdout, stderr = p.communicate()
-
-    # Check if the command was successful
-    if p.returncode == 0:
-        res = ArpRTSPScanResult()
-        res.ip = ip
-        for line in stdout.split("\n"):
-            #print(">>",line)
-            # Search for the pattern in the output
-            match = interface_pattern.search(line)
-            # Check if a match is found
-            if match:
-                # interface_name = match.group(1)
-                #print("Interface found:", interface_name)
-                res.interface = match.group(1)
-            m = ip_mac_pattern.match(line)
-            if (m is None) or (m.lastindex != 2):
-                    pass
-            else:
-                # ip = m.group(1)
-                # mac = m.group(2)
-                #print("Mac found:", mac)
-                res.mac=m.group(2)
-        return res
-    else:
-        print(f"No arp-scan found: install with 'sudo apt-get install arp-scan'.  You also need extra rights to run it: 'sudo chmod u+s /usr/sbin/arp-scan'")
-        return None
-
-
-def ARPScanInterface(name, ip, iplen, lis, max_time_per_interface = 10, verbose=False):
-    """Parallelizable arp-scan on a certain interface
-
-    :param name: name of the interface
-    :param ip: ip address
-    :param iplen: ip mask
-    :param max_time_per_interface: max time spent scanning on the interface in seconds
-    :param lis: a common multiprocess-protected list where several processes can append
-    :param verbose: (bool) be verbose or not
-
-    Returns a list of ArpRTSPScanResult objects
-    """
-    ip_mac_pattern = re.compile(r'(\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b)\s+([0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2})')
-    # .. thanks chatgpt!
-    comst = f"arp-scan -g -retry=2 --interface={name} {ip}/{iplen}" # e.g. eno1 192.168.30.149/24
-    # verbose = True
-    if verbose: print("ARPScanInterface: starting for", comst)
-    stdout = ""
-    # as per: https://stackoverflow.com/questions/12419198/python-subprocess-readlines-hangs
-    # the ONLY way to read process output on-the-fly
-    master_fd, slave_fd = pty.openpty()
-    # signal.alarm(max_time_per_interface) # in secs
-    try:
-        proc = Popen(comst.split(), stdin=slave_fd, stdout=slave_fd, stderr=STDOUT, close_fds=True)
-    except FileNotFoundError:
-        print(f"No arp-scan found: install with 'sudo apt-get install arp-scan'.  You also need extra rights to run it: 'sudo chmod u+s /usr/sbin/arp-scan'")
-        return []
-    os.close(slave_fd)
-    timecount = 0
-    try:
-        while 1:
-            if timecount > max_time_per_interface:
-                print(f"WARNING: arp-scan '{comst}' took more than {max_time_per_interface} secs - aborting")
-                break        
-            t0 = time.time()
-            try:
-                r, w, e = select.select([ master_fd ], [], [], 1)
-                dt = time.time() - t0
-                timecount += dt
-                if verbose: print("timecount>", timecount)
-                if master_fd in r:
-                    data = os.read(master_fd, 512)
-                else:
-                    continue
-            except OSError as e:
-                if e.errno != errno.EIO:
-                    raise
-                break # EIO means EOF on some systems
-            else:
-                if not data: # EOF
-                    break
-                # if verbose: print('>' + repr(data))
-                if verbose: print('>', data.decode("utf-8"))
-                stdout += data.decode("utf-8")
-    finally:
-        os.close(master_fd)
-        if proc.poll() is None:
-            proc.kill()
-        proc.wait()
-    if proc.returncode > 0:
-        print("arp-scan error:", stdout)
-        print("You might need to grant extra rights with: 'sudo chmod u+s /usr/sbin/arp-scan'")
-        return []
-
-    lis_ = []
-    for line in stdout.split("\n"):
-        m = ip_mac_pattern.match(line)
-        if (m is None) or (m.lastindex != 2):
-                continue
-        ip = m.group(1)
-        mac = m.group(2)
-        if verbose: print("ip, mac>", ip, mac)
-        if verbose: print("ARPScanInterface: appending", ip)
-        lis_.append(ArpRTSPScanResult(
-            interface=name,
-            mac=mac,
-            ip=ip
-        ))
-
-    if verbose: print("ARPScanInterface: finished for", comst)
-
-    if len(lis_) < 1:
-        if verbose: print("ARPScanInterface: did not find anything")
-    for l in lis_: # append to multiprocess-protected list
-        lis.append(l)
-    # return lis_
-
-
-def runARPScan_(exclude_interfaces = [], max_time_per_interface=10, verbose=False) -> list:
-    """Runs arp-scan in parallel over all found interfaces.  Returns a list of ArpRTSPScanResult objects
-    """
-    # verbose = True
-    # verbose = False
-    lis = [] # a list of ArpRTSPScanResult objects
-    processes = []    
-    with Manager() as manager:
-        # Create a shared list
-        shared_list = manager.list()
-        for name, subnets in getInterfaces().items():
-            if name in exclude_interfaces:
-                continue
-            # print("runARPScan: scanning interface", name)
-            for ip, iplen in subnets:
-                # print(name+" "+ip+"/"+iplen) # stdbuf -oL
-                p = Process(target=ARPScanInterface, args=(
-                    name, ip, iplen, shared_list, max_time_per_interface, verbose
-                ))
-                processes.append(p)
-                p.start()
-        for p in processes:
-            p.join()
-        for l in shared_list:
-            lis.append(l)
-    return lis
-
-
+"""
 def getMacIPMap(exclude_interfaces = [], max_time_per_interface=10, verbose=False) -> dict:
-    """Returns a dictionary (mapping) from mac to IP addresses
-
-    This works also as discovery (i.e. we use "arp-scan" instead of plain "arp")
-    """
+    #Returns a dictionary (mapping) from mac to IP addresses
+    #
+    #This works also as discovery (i.e. we use "arp-scan" instead of plain "arp")
     lis = runARPScan_(exclude_interfaces = exclude_interfaces, max_time_per_interface = max_time_per_interface, verbose = verbose)
     dic = {}
     for res in lis:
         dic[res.mac]=res.ip
     return dic
-
+"""
 
 def runARPScan(exclude_list = [], exclude_interfaces = [], max_time_per_interface=10, verbose=False, return_all=False, return_always=[]) -> list:
     """brute-force port 554 & 8554 scan & RTSP OPTIONS test ping in parallel
@@ -505,7 +141,7 @@ def runARPScan(exclude_list = [], exclude_interfaces = [], max_time_per_interfac
         asyncio.wait(coros)
     )
 
-    results = [] # list of (ip, port) tuples
+    # results = [] # list of (ip, port) tuples
     for task in finished:
         result = task.result()
         if result is not None:
@@ -530,7 +166,5 @@ if __name__ == "__main__":
     for res in results:
         print(res)
     """
-    print(ARPIP2Mac("10.0.0.4"))
-    print(getMacIPMap())
-
+    pass
 
