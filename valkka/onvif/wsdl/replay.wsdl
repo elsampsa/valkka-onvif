@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <?xml-stylesheet type="text/xsl" href="../ver20/util/onvif-wsdl-viewer.xsl"?>
 <!--
-Copyright (c) 2008-2010 by ONVIF: Open Network Video Interface Forum. All rights reserved.
+Copyright (c) 2008-2021 by ONVIF: Open Network Video Interface Forum. All rights reserved.
 
 Recipients of this document may copy, distribute, publish, or display this document so long as this copyright notice, license and disclaimer are retained with all copies of the document. No license is granted to modify this document.
 
@@ -10,7 +10,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 -->
 <wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap12/" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:trp="http://www.onvif.org/ver10/replay/wsdl" targetNamespace="http://www.onvif.org/ver10/replay/wsdl">
 	<wsdl:types>
-		<xs:schema targetNamespace="http://www.onvif.org/ver10/replay/wsdl" xmlns:tt="http://www.onvif.org/ver10/schema" xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" version="2.2.1">
+		<xs:schema targetNamespace="http://www.onvif.org/ver10/replay/wsdl" xmlns:tt="http://www.onvif.org/ver10/schema" xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" version="21.06">
 			<xs:import namespace="http://www.onvif.org/ver10/schema" schemaLocation="./onvif.xsd"/>
 			<!--  Message Request/Responses elements  -->
 			<!--===============================-->
@@ -33,14 +33,14 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 			<!--===============================-->
 			<xs:complexType name="Capabilities">
 				<xs:sequence>
-					<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+					<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>	 <!-- first Vendor then ONVIF -->
 				</xs:sequence>
-				<xs:attribute name="ReversePlayback" type="xs:boolean" default="0">
+				<xs:attribute name="ReversePlayback" type="xs:boolean">
 					<xs:annotation>
 						<xs:documentation>Indicator that the Device supports reverse playback as defined in the ONVIF Streaming Specification. </xs:documentation>
 					</xs:annotation>
 				</xs:attribute>
-				<xs:attribute name="SessionTimeoutRange" type="tt:FloatAttrList">
+				<xs:attribute name="SessionTimeoutRange" type="tt:FloatList">
 					<xs:annotation>
 						<xs:documentation>The list contains two elements defining the minimum and maximum valid values supported as session timeout in seconds. </xs:documentation>
 					</xs:annotation>
@@ -48,6 +48,11 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 				<xs:attribute name="RTP_RTSP_TCP" type="xs:boolean">
 					<xs:annotation>
 						<xs:documentation>Indicates support for RTP/RTSP/TCP.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="RTSPWebSocketUri" type="xs:anyURI">
+					<xs:annotation>
+						<xs:documentation>If playback streaming over WebSocket is supported, this shall return the RTSP WebSocket URI as described in Streaming Specification Section 5.1.1.5.</xs:documentation>
 					</xs:annotation>
 				</xs:attribute>
 				<xs:anyAttribute processContents="lax"/>
@@ -152,7 +157,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 				Requests a URI that can be used to initiate playback of a recorded stream
 				using RTSP as the control protocol. The URI is valid only as it is
 				specified in the response.
-				This operation is mandatory.
+				A device supporting the Replay Service shall support the GetReplayUri command.
 			</wsdl:documentation>
 			<wsdl:input message="trp:GetReplayUriRequest"/>
 			<wsdl:output message="trp:GetReplayUriResponse"/>
@@ -213,9 +218,4 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 			</wsdl:output>
 		</wsdl:operation>
 	</wsdl:binding>
-    <wsdl:service name="ReplayService">
-        <wsdl:port name="ReplayPort" binding="trp:ReplayBinding">
-            <soap:address location="http://192.168.0.51:8888/onvif/Replay"/>
-        </wsdl:port>
-    </wsdl:service>
 </wsdl:definitions>

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <?xml-stylesheet type="text/xsl" href="../../../ver20/util/onvif-wsdl-viewer.xsl"?>
 <!--
-Copyright (c) 2008-2014 by ONVIF: Open Network Video Interface Forum. All rights reserved.
+Copyright (c) 2008-2023 by ONVIF: Open Network Video Interface Forum. All rights reserved.
 
 Recipients of this document may copy, distribute, publish, or display this document so long as this copyright notice, license and disclaimer are retained with all copies of the document. No license is granted to modify this document.
 
@@ -10,8 +10,8 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 -->
 <wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap12/" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:tds="http://www.onvif.org/ver10/device/wsdl" targetNamespace="http://www.onvif.org/ver10/device/wsdl">
 	<wsdl:types>
-		<xs:schema targetNamespace="http://www.onvif.org/ver10/device/wsdl" xmlns:tt="http://www.onvif.org/ver10/schema" xmlns:tds="http://www.onvif.org/ver10/device/wsdl" elementFormDefault="qualified" version="2.4.2">
-            <xs:import namespace="http://www.onvif.org/ver10/schema" schemaLocation="./onvif.xsd"/>
+		<xs:schema targetNamespace="http://www.onvif.org/ver10/device/wsdl" xmlns:tt="http://www.onvif.org/ver10/schema" xmlns:tds="http://www.onvif.org/ver10/device/wsdl" elementFormDefault="qualified" version="23.12">
+			<xs:import namespace="http://www.onvif.org/ver10/schema" schemaLocation="./onvif.xsd"/>
 			<!--===============================-->
 			<xs:element name="GetServices">
 				<xs:complexType>
@@ -64,7 +64,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 							<xs:documentation>The version of the service (not the ONVIF core spec version).</xs:documentation>
 						</xs:annotation>
 					</xs:element>
-					<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+					<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>   <!-- first Vendor then ONVIF -->
 				</xs:sequence>
 				<xs:anyAttribute processContents="lax"/>
 			</xs:complexType>
@@ -161,9 +161,6 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 				<xs:anyAttribute processContents="lax"/>
 			</xs:complexType>
 			<!--===============================-->
-			<xs:simpleType name="EAPMethodTypes">
-				<xs:list itemType="xs:int"/>
-			</xs:simpleType>
 			<xs:complexType name="SecurityCapabilities">
 				<xs:attribute name="TLS1.0" type="xs:boolean">
 					<xs:annotation>
@@ -235,7 +232,12 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 						<xs:documentation>Indicates support for WS-Security REL token.</xs:documentation>
 					</xs:annotation>
 				</xs:attribute>
-				<xs:attribute name="SupportedEAPMethods" type="tds:EAPMethodTypes">
+				<xs:attribute name="JsonWebToken" type="xs:boolean">
+					<xs:annotation>
+						<xs:documentation>Indicates support for JWT-based authentication with WS-Security Binary Security token.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="SupportedEAPMethods" type="tt:IntList">
 					<xs:annotation>
 						<xs:documentation>EAP Methods supported by the device. The int values refer to the <a href="http://www.iana.org/assignments/eap-numbers/eap-numbers.xhtml">IANA EAP Registry</a>.</xs:documentation>
 					</xs:annotation>
@@ -243,6 +245,31 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 				<xs:attribute name="MaxUsers" type="xs:int">
 					<xs:annotation>
 						<xs:documentation>The maximum number of users that the device supports.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="MaxUserNameLength" type="xs:int">
+					<xs:annotation>
+						<xs:documentation>Maximum number of characters supported for the username by CreateUsers.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="MaxPasswordLength" type="xs:int">
+					<xs:annotation>
+						<xs:documentation>Maximum number of characters supported for the password by CreateUsers and SetUser.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="SecurityPolicies" type="tt:StringList">
+					<xs:annotation>
+                    				<xs:documentation>Indicates which security policies are supported. Options are: ModifyPassword, PasswordComplexity, AuthFailureWarnings</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="MaxPasswordHistory" type="xs:int">
+					<xs:annotation>
+                    				<xs:documentation>Maximum number of passwords that the device can remember for each user</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="HashingAlgorithms" type="tt:StringList">
+					<xs:annotation>
+                    				<xs:documentation>Supported hashing algorithms as part of HTTP and RTSP Digest authentication.Example: MD5,SHA-256</xs:documentation>
 					</xs:annotation>
 				</xs:attribute>
 				<xs:anyAttribute processContents="lax"/>
@@ -281,7 +308,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 				</xs:attribute>
 				<xs:attribute name="HttpFirmwareUpgrade" type="xs:boolean">
 					<xs:annotation>
-						<xs:documentation>Indicates support for system backup through MTOM.</xs:documentation>
+						<xs:documentation>Indicates support for firmware upgrade through HTTP.</xs:documentation>
 					</xs:annotation>
 				</xs:attribute>
 				<xs:attribute name="HttpSystemBackup" type="xs:boolean">
@@ -299,8 +326,73 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 						<xs:documentation>Indicates support for retrieving support information through HTTP.</xs:documentation>
 					</xs:annotation>
 				</xs:attribute>
+				<xs:attribute name="StorageConfiguration" type="xs:boolean">
+					<xs:annotation>
+						<xs:documentation>Indicates support for storage configuration interfaces.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="MaxStorageConfigurations" type="xs:int">
+					<xs:annotation>
+						<xs:documentation>Indicates maximum number of storage configurations supported.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="GeoLocationEntries" type="xs:int">
+					<xs:annotation>
+						<xs:documentation>If present signals support for geo location. The value signals the supported number of entries.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="AutoGeo" type="tt:StringAttrList">
+					<xs:annotation>
+						<xs:documentation>List of supported automatic GeoLocation adjustment supported by the device. Valid items are defined by tds:AutoGeoMode.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="StorageTypesSupported" type="tt:StringAttrList">
+					<xs:annotation>
+						<xs:documentation>Enumerates the supported StorageTypes, see tds:StorageType.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="DiscoveryNotSupported" type="xs:boolean">
+					<xs:annotation>
+						<xs:documentation>Indicates no support for network discovery.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="NetworkConfigNotSupported" type="xs:boolean">
+					<xs:annotation>
+						<xs:documentation>Indicates no support for network configuration.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="UserConfigNotSupported" type="xs:boolean">
+					<xs:annotation>
+						<xs:documentation>Indicates no support for user configuration.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="Addons" type="tt:StringAttrList">
+					<xs:annotation>
+						<xs:documentation>List of supported Addons by the device.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
 				<xs:anyAttribute processContents="lax"/>
 			</xs:complexType>
+			<!--===============================-->
+			<xs:simpleType name="AutoGeoModes">
+				<xs:restriction base="xs:string">
+					<xs:enumeration value="Location">
+						<xs:annotation>	
+							<xs:documentation>Automatic adjustment of the device location.</xs:documentation>
+						</xs:annotation>
+					</xs:enumeration>
+					<xs:enumeration value="Heading">
+						<xs:annotation>	
+							<xs:documentation>Automatic adjustment of the device orientation relative to the compass also called yaw.</xs:documentation>
+						</xs:annotation>
+					</xs:enumeration>
+					<xs:enumeration value="Leveling">
+						<xs:annotation>	
+							<xs:documentation>Automatic adjustment of the deviation from the horizon also called pitch and roll.</xs:documentation>
+						</xs:annotation>
+					</xs:enumeration>
+				</xs:restriction>
+			</xs:simpleType>
 			<!--===============================-->
 			<xs:complexType name="MiscCapabilities">
 				<xs:attribute name="AuxiliaryCommands" type="tt:StringAttrList">
@@ -710,7 +802,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 				<xs:complexType>
 					<xs:sequence>
 						<xs:element name="GUID" type="xs:string"/>
-						<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+						<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>   <!-- first Vendor then ONVIF -->
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
@@ -824,6 +916,140 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 				<xs:complexType>
 					<xs:sequence>
 						<xs:element name="WsdlUrl" type="xs:anyURI"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<!--===============================-->
+			<xs:element name="GetPasswordComplexityOptions">
+				<xs:complexType>
+					<xs:sequence>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="GetPasswordComplexityOptionsResponse">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="MinLenRange" type="tt:IntRange" minOccurs="0"/>
+						<xs:element name="UppercaseRange" type="tt:IntRange" minOccurs="0"/>
+						<xs:element name="NumberRange" type="tt:IntRange" minOccurs="0"/>
+						<xs:element name="SpecialCharsRange" type="tt:IntRange" minOccurs="0"/>
+						<xs:element name="BlockUsernameOccurrenceSupported" type="xs:boolean" minOccurs="0"/>
+						<xs:element name="PolicyConfigurationLockSupported" type="xs:boolean" minOccurs="0"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<!--===============================-->
+			<xs:element name="GetPasswordComplexityConfiguration">
+				<xs:complexType>
+					<xs:sequence>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="GetPasswordComplexityConfigurationResponse">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="MinLen" type="xs:int" minOccurs="0"/>
+						<xs:element name="Uppercase" type="xs:int" minOccurs="0"/>
+						<xs:element name="Number" type="xs:int" minOccurs="0"/>
+						<xs:element name="SpecialChars" type="xs:int" minOccurs="0"/>
+						<xs:element name="BlockUsernameOccurrence" type="xs:boolean" minOccurs="0"/>
+						<xs:element name="PolicyConfigurationLocked" type="xs:boolean" minOccurs="0"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<!--===============================-->
+			<xs:element name="SetPasswordComplexityConfiguration">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="MinLen" type="xs:int" minOccurs="0"/>
+						<xs:element name="Uppercase" type="xs:int" minOccurs="0"/>
+						<xs:element name="Number" type="xs:int" minOccurs="0"/>
+						<xs:element name="SpecialChars" type="xs:int" minOccurs="0"/>
+						<xs:element name="BlockUsernameOccurrence" type="xs:boolean" minOccurs="0"/>
+						<xs:element name="PolicyConfigurationLocked" type="xs:boolean" minOccurs="0"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="SetPasswordComplexityConfigurationResponse">
+				<xs:complexType>
+					<xs:sequence>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<!--===============================-->
+			<xs:element name="GetPasswordHistoryConfiguration">
+				<xs:complexType>
+					<xs:sequence>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="GetPasswordHistoryConfigurationResponse">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="Enabled" type="xs:boolean"/>
+						<xs:element name="Length" type="xs:int"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<!--===============================-->
+			<xs:element name="SetPasswordHistoryConfiguration">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="Enabled" type="xs:boolean"/>
+						<xs:element name="Length" type="xs:int"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="SetPasswordHistoryConfigurationResponse">
+				<xs:complexType>
+					<xs:sequence>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<!--===============================-->
+			<xs:element name="GetAuthFailureWarningOptions">
+				<xs:complexType>
+					<xs:sequence>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="GetAuthFailureWarningOptionsResponse">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="MonitorPeriodRange" type="tt:IntRange"/>
+						<xs:element name="AuthFailureRange" type="tt:IntRange"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<!--===============================-->
+			<xs:element name="GetAuthFailureWarningConfiguration">
+				<xs:complexType>
+					<xs:sequence>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="GetAuthFailureWarningConfigurationResponse">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="Enabled" type="xs:boolean"/>
+						<xs:element name="MonitorPeriod" type="xs:int"/>
+						<xs:element name="MaxAuthFailures" type="xs:int"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<!--===============================-->
+			<xs:element name="SetAuthFailureWarningConfiguration">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="Enabled" type="xs:boolean"/>
+						<xs:element name="MonitorPeriod" type="xs:int"/>
+						<xs:element name="MaxAuthFailures" type="xs:int"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="SetAuthFailureWarningConfigurationResponse">
+				<xs:complexType>
+					<xs:sequence>
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
@@ -1745,7 +1971,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 			<xs:element name="GetDot11Capabilities">
 				<xs:complexType>
 					<xs:sequence>
-						<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+						<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>   <!-- first Vendor then ONVIF -->
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
@@ -1801,7 +2027,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 						<xs:element name="Extension" minOccurs="0">
 							<xs:complexType>
 								<xs:sequence>
-									<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+									<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>   <!-- first Vendor then ONVIF -->
 								</xs:sequence>
 							</xs:complexType>
 						</xs:element>
@@ -1837,6 +2063,257 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
+			<!--===============================-->
+			<xs:element name="SetHashingAlgorithm">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="Algorithm" type="tt:StringList">
+							<xs:annotation>
+								<xs:documentation>
+									Hashing algorithm(s) used in HTTP and RTSP Digest Authentication.
+								</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="SetHashingAlgorithmResponse">
+				<xs:complexType>
+					<xs:sequence>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<!--===============================-->
+			
+			<xs:complexType name="UserCredential">
+				<xs:sequence>
+					<xs:element name="UserName" type="xs:string">
+						<xs:annotation>	
+							<xs:documentation>User name</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="Password" type="xs:string" minOccurs="0">
+						<xs:annotation>	
+							<xs:documentation> optional password</xs:documentation> 
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="Extension" minOccurs="0">
+						<xs:complexType>
+							<xs:sequence>
+								<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>   <!-- first Vendor then ONVIF -->
+							</xs:sequence>
+						</xs:complexType>
+					</xs:element>
+				</xs:sequence>
+			</xs:complexType>
+			
+			<xs:simpleType name="StorageType">
+				<xs:restriction base="xs:string">
+					<xs:enumeration value="NFS">
+						<xs:annotation>	
+							<xs:documentation>NFS protocol</xs:documentation>
+						</xs:annotation>
+					</xs:enumeration>
+					<xs:enumeration value="CIFS">
+						<xs:annotation>
+							<xs:documentation>CIFS protocol</xs:documentation>
+						</xs:annotation>
+					</xs:enumeration>
+					<xs:enumeration value="CDMI">
+						<xs:annotation>
+							<xs:documentation>CDMI protocol</xs:documentation>
+						</xs:annotation>
+					</xs:enumeration>
+					<xs:enumeration value="FTP">
+						<xs:annotation>
+							<xs:documentation>FTP protocol</xs:documentation>
+						</xs:annotation>
+					</xs:enumeration>
+					<xs:enumeration value="ObjectStorageS3">
+						<xs:annotation>
+							<xs:documentation>Amazon Simple Storage Service (S3) protocol (also used for S3 compatible object storages like MinIO)</xs:documentation>
+						</xs:annotation>
+					</xs:enumeration>
+					<xs:enumeration value="ObjectStorageAzure">
+						<xs:annotation>
+							<xs:documentation>Microsoft Azure Blob Storage protocol</xs:documentation>
+						</xs:annotation>
+					</xs:enumeration>
+				</xs:restriction>
+			</xs:simpleType>
+			
+			<xs:complexType name="StorageConfigurationData">
+				<xs:sequence>
+					<xs:element name="LocalPath" type="xs:anyURI" minOccurs="0">
+						<xs:annotation>
+							<xs:documentation>Local path</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="StorageUri" type="xs:anyURI" minOccurs="0">
+						<xs:annotation>
+							<xs:documentation>Storage server address</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="User" type="tds:UserCredential"  minOccurs="0">
+						<xs:annotation>
+							<xs:documentation>User credential for the storage server</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="Extension" minOccurs="0">
+						<xs:complexType>
+							<xs:sequence>
+								<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>   <!-- first Vendor then ONVIF -->
+							</xs:sequence>
+						</xs:complexType>
+					</xs:element>
+				</xs:sequence>
+				<xs:attribute name="type" type="xs:string" use="required">
+					<xs:annotation>
+						<xs:documentation>tds:StorageType lists the acceptable values for type attribute</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="Region" type="xs:string">
+					<xs:annotation>
+						<xs:documentation>Optional region of the storage server</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:anyAttribute processContents="lax"/>
+			 </xs:complexType>
+
+			<xs:complexType name="StorageConfiguration">
+				<xs:complexContent>
+					<xs:extension base="tt:DeviceEntity">
+						<xs:sequence>
+							<xs:element name="Data" type="tds:StorageConfigurationData">
+							</xs:element>
+						</xs:sequence>
+					</xs:extension>
+				</xs:complexContent>
+			</xs:complexType>
+
+			<!--===============================-->
+			<!--===============================-->
+			<xs:element name="GetStorageConfigurations">
+				<xs:complexType>
+					<xs:sequence/>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="GetStorageConfigurationsResponse">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="StorageConfigurations" type="tds:StorageConfiguration" minOccurs="0" maxOccurs="unbounded"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>			
+			<!--===============================-->
+			<!--===============================-->
+ 			<xs:element name="CreateStorageConfiguration">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="StorageConfiguration" type="tds:StorageConfigurationData">
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>			
+			<xs:element name="CreateStorageConfigurationResponse">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="Token" type="tt:ReferenceToken">
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>	 		
+			<!--===============================-->
+			<!--===============================-->
+ 			<xs:element name="GetStorageConfiguration">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="Token" type="tt:ReferenceToken">
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>			
+			<xs:element name="GetStorageConfigurationResponse">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="StorageConfiguration" type="tds:StorageConfiguration">
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>	 		
+			<!--===============================-->
+			<!--===============================-->
+ 			<xs:element name="SetStorageConfiguration">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="StorageConfiguration" type="tds:StorageConfiguration">
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>			
+			<xs:element name="SetStorageConfigurationResponse">
+				<xs:complexType>
+					<xs:sequence/>
+				</xs:complexType>
+			</xs:element>	 		
+			<!--===============================-->
+			<!--===============================-->
+ 			<xs:element name="DeleteStorageConfiguration">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="Token" type="tt:ReferenceToken">
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>			
+			<xs:element name="DeleteStorageConfigurationResponse">
+				<xs:complexType>
+					<xs:sequence/>
+				</xs:complexType>
+			</xs:element>	 		
+
+			<!--===============================-->
+			<xs:element name="GetGeoLocation">
+				<xs:complexType>
+					<xs:sequence>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>			
+			<xs:element name="GetGeoLocationResponse">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="Location" type="tt:LocationEntity" minOccurs="0" maxOccurs="unbounded"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>	 		
+			<!--===============================-->
+			<xs:element name="SetGeoLocation">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="Location" type="tt:LocationEntity" maxOccurs="unbounded"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>			
+			<xs:element name="SetGeoLocationResponse">
+				<xs:complexType>
+					<xs:sequence/>
+				</xs:complexType>
+			</xs:element>	 		
+			<!--===============================-->
+			<xs:element name="DeleteGeoLocation">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="Location" type="tt:LocationEntity" maxOccurs="unbounded"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>			
+			<xs:element name="DeleteGeoLocationResponse">
+				<xs:complexType>
+					<xs:sequence/>
+				</xs:complexType>
+			</xs:element>	 		
+			<!--===============================-->
+			<!--===============================-->
 		</xs:schema>
 	</wsdl:types>
 	<wsdl:message name="GetServicesRequest">
@@ -2018,6 +2495,54 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 	</wsdl:message>
 	<wsdl:message name="GetWsdlUrlResponse">
 		<wsdl:part name="parameters" element="tds:GetWsdlUrlResponse"/>
+	</wsdl:message>
+	<wsdl:message name="GetPasswordComplexityOptionsRequest">
+		<wsdl:part name="parameters" element="tds:GetPasswordComplexityOptions"/>
+	</wsdl:message>
+	<wsdl:message name="GetPasswordComplexityOptionsResponse">
+		<wsdl:part name="parameters" element="tds:GetPasswordComplexityOptionsResponse"/>
+	</wsdl:message>
+	<wsdl:message name="GetPasswordComplexityConfigurationRequest">
+		<wsdl:part name="parameters" element="tds:GetPasswordComplexityConfiguration"/>
+	</wsdl:message>
+	<wsdl:message name="GetPasswordComplexityConfigurationResponse">
+		<wsdl:part name="parameters" element="tds:GetPasswordComplexityConfigurationResponse"/>
+	</wsdl:message>
+	<wsdl:message name="SetPasswordComplexityConfigurationRequest">
+		<wsdl:part name="parameters" element="tds:SetPasswordComplexityConfiguration"/>
+	</wsdl:message>
+	<wsdl:message name="SetPasswordComplexityConfigurationResponse">
+		<wsdl:part name="parameters" element="tds:SetPasswordComplexityConfigurationResponse"/>
+	</wsdl:message>
+	<wsdl:message name="GetPasswordHistoryConfigurationRequest">
+		<wsdl:part name="parameters" element="tds:GetPasswordHistoryConfiguration"/>
+	</wsdl:message>
+	<wsdl:message name="GetPasswordHistoryConfigurationResponse">
+		<wsdl:part name="parameters" element="tds:GetPasswordHistoryConfigurationResponse"/>
+	</wsdl:message>
+	<wsdl:message name="SetPasswordHistoryConfigurationRequest">
+		<wsdl:part name="parameters" element="tds:SetPasswordHistoryConfiguration"/>
+	</wsdl:message>
+	<wsdl:message name="SetPasswordHistoryConfigurationResponse">
+		<wsdl:part name="parameters" element="tds:SetPasswordHistoryConfigurationResponse"/>
+	</wsdl:message>
+	<wsdl:message name="GetAuthFailureWarningOptionsRequest">
+		<wsdl:part name="parameters" element="tds:GetAuthFailureWarningOptions"/>
+	</wsdl:message>
+	<wsdl:message name="GetAuthFailureWarningOptionsResponse">
+		<wsdl:part name="parameters" element="tds:GetAuthFailureWarningOptionsResponse"/>
+	</wsdl:message>
+	<wsdl:message name="GetAuthFailureWarningConfigurationRequest">
+		<wsdl:part name="parameters" element="tds:GetAuthFailureWarningConfiguration"/>
+	</wsdl:message>
+	<wsdl:message name="GetAuthFailureWarningConfigurationResponse">
+		<wsdl:part name="parameters" element="tds:GetAuthFailureWarningConfigurationResponse"/>
+	</wsdl:message>
+	<wsdl:message name="SetAuthFailureWarningConfigurationRequest">
+		<wsdl:part name="parameters" element="tds:SetAuthFailureWarningConfiguration"/>
+	</wsdl:message>
+	<wsdl:message name="SetAuthFailureWarningConfigurationResponse">
+		<wsdl:part name="parameters" element="tds:SetAuthFailureWarningConfigurationResponse"/>
 	</wsdl:message>
 	<wsdl:message name="GetCapabilitiesRequest">
 		<wsdl:part name="parameters" element="tds:GetCapabilities"/>
@@ -2331,6 +2856,62 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 	<wsdl:message name="StartSystemRestoreResponse">
 		<wsdl:part name="parameters" element="tds:StartSystemRestoreResponse"/>
 	</wsdl:message>
+	
+	<wsdl:message name="GetStorageConfigurationsRequest">
+		<wsdl:part name="parameters" element="tds:GetStorageConfigurations"/>
+	</wsdl:message>
+	<wsdl:message name="GetStorageConfigurationsResponse">
+		<wsdl:part name="parameters" element="tds:GetStorageConfigurationsResponse"/>
+	</wsdl:message>
+	<wsdl:message name="CreateStorageConfigurationRequest">
+		<wsdl:part name="parameters" element="tds:CreateStorageConfiguration"/>
+	</wsdl:message>
+	<wsdl:message name="CreateStorageConfigurationResponse">
+		<wsdl:part name="parameters" element="tds:CreateStorageConfigurationResponse"/>
+	</wsdl:message>
+	<wsdl:message name="GetStorageConfigurationRequest">
+		<wsdl:part name="parameters" element="tds:GetStorageConfiguration"/>
+	</wsdl:message>
+	<wsdl:message name="GetStorageConfigurationResponse">
+		<wsdl:part name="parameters" element="tds:GetStorageConfigurationResponse"/>
+	</wsdl:message>
+	<wsdl:message name="SetStorageConfigurationRequest">
+		<wsdl:part name="parameters" element="tds:SetStorageConfiguration"/>
+	</wsdl:message>
+	<wsdl:message name="SetStorageConfigurationResponse">
+		<wsdl:part name="parameters" element="tds:SetStorageConfigurationResponse"/>
+	</wsdl:message>
+	<wsdl:message name="DeleteStorageConfigurationRequest">
+		<wsdl:part name="parameters" element="tds:DeleteStorageConfiguration"/>
+	</wsdl:message>
+	<wsdl:message name="DeleteStorageConfigurationResponse">
+		<wsdl:part name="parameters" element="tds:DeleteStorageConfigurationResponse"/>
+	</wsdl:message>
+	<wsdl:message name="GetGeoLocationRequest">
+		<wsdl:part name="parameters" element="tds:GetGeoLocation"/>
+	</wsdl:message>
+	<wsdl:message name="GetGeoLocationResponse">
+		<wsdl:part name="parameters" element="tds:GetGeoLocationResponse"/>
+	</wsdl:message>
+	<wsdl:message name="SetGeoLocationRequest">
+		<wsdl:part name="parameters" element="tds:SetGeoLocation"/>
+	</wsdl:message>
+	<wsdl:message name="SetGeoLocationResponse">
+		<wsdl:part name="parameters" element="tds:SetGeoLocationResponse"/>
+	</wsdl:message>
+	<wsdl:message name="DeleteGeoLocationRequest">
+		<wsdl:part name="parameters" element="tds:DeleteGeoLocation"/>
+	</wsdl:message>
+	<wsdl:message name="DeleteGeoLocationResponse">
+		<wsdl:part name="parameters" element="tds:DeleteGeoLocationResponse"/>
+	</wsdl:message>	
+	<wsdl:message name="SetHashingAlgorithmRequest">
+		<wsdl:part name="parameters" element="tds:SetHashingAlgorithm"/>
+	</wsdl:message>
+	<wsdl:message name="SetHashingAlgorithmResponse">
+		<wsdl:part name="parameters" element="tds:SetHashingAlgorithmResponse"/>
+	</wsdl:message>
+	
 	<wsdl:portType name="Device">
 		<wsdl:operation name="GetServices">
 			<wsdl:documentation>Returns information about services on the device.</wsdl:documentation>
@@ -2556,20 +3137,53 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 			<wsdl:output message="tds:SetUserResponse"/>
 		</wsdl:operation>
 		<wsdl:operation name="GetWsdlUrl">
-			<wsdl:documentation>It is possible for an endpoint to request a URL that can be used to retrieve the complete
-				schema and WSDL definitions of a device. The command gives in return a URL entry point
-				where all the necessary product specific WSDL and schema definitions can be retrieved. The
-				device shall provide a URL for WSDL and schema download through the GetWsdlUrl command.</wsdl:documentation>
+			<wsdl:documentation>This method allows to provide a URL where product specific WSDL and schema definitions can be retrieved. This method is deprecated.</wsdl:documentation>
 			<wsdl:input message="tds:GetWsdlUrlRequest"/>
 			<wsdl:output message="tds:GetWsdlUrlResponse"/>
 		</wsdl:operation>
+		<wsdl:operation name="GetPasswordComplexityOptions">
+			<wsdl:documentation>This method allows retrieval of all the available parameters and their valid ranges for the password complexity configuration.</wsdl:documentation>
+			<wsdl:input message="tds:GetPasswordComplexityOptionsRequest"/>
+			<wsdl:output message="tds:GetPasswordComplexityOptionsResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="GetPasswordComplexityConfiguration">
+			<wsdl:documentation>This method allows retrieval of the current password complexity configuration settings.</wsdl:documentation>
+			<wsdl:input message="tds:GetPasswordComplexityConfigurationRequest"/>
+			<wsdl:output message="tds:GetPasswordComplexityConfigurationResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="SetPasswordComplexityConfiguration">
+			<wsdl:documentation>This method allows setting of the password complexity configuration.</wsdl:documentation>
+			<wsdl:input message="tds:SetPasswordComplexityConfigurationRequest"/>
+			<wsdl:output message="tds:SetPasswordComplexityConfigurationResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="GetPasswordHistoryConfiguration">
+			<wsdl:documentation>This method allows retrieval of the current password history configuration settings.</wsdl:documentation>
+			<wsdl:input message="tds:GetPasswordHistoryConfigurationRequest"/>
+			<wsdl:output message="tds:GetPasswordHistoryConfigurationResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="SetPasswordHistoryConfiguration">
+			<wsdl:documentation>This method allows setting of the password history configuration.</wsdl:documentation>
+			<wsdl:input message="tds:SetPasswordHistoryConfigurationRequest"/>
+			<wsdl:output message="tds:SetPasswordHistoryConfigurationResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="GetAuthFailureWarningOptions">
+			<wsdl:documentation>This method allows retrieval of all the available parameters and their valid ranges for the authentication failure warning configuration.</wsdl:documentation>
+			<wsdl:input message="tds:GetAuthFailureWarningOptionsRequest"/>
+			<wsdl:output message="tds:GetAuthFailureWarningOptionsResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="GetAuthFailureWarningConfiguration">
+			<wsdl:documentation>This method allows retrieval of the current authentication failure warning configuration settings.</wsdl:documentation>
+			<wsdl:input message="tds:GetAuthFailureWarningConfigurationRequest"/>
+			<wsdl:output message="tds:GetAuthFailureWarningConfigurationResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="SetAuthFailureWarningConfiguration">
+			<wsdl:documentation>This method allows setting of the authentication failure warning configuration.</wsdl:documentation>
+			<wsdl:input message="tds:SetAuthFailureWarningConfigurationRequest"/>
+			<wsdl:output message="tds:SetAuthFailureWarningConfigurationResponse"/>
+		</wsdl:operation>
 		<wsdl:operation name="GetCapabilities">
-			<wsdl:documentation>Any endpoint can ask for the capabilities of a device using the capability exchange request
-				response operation. The device shall indicate all its ONVIF compliant capabilities through the
-				GetCapabilities command.
-				The capability list includes references to the addresses (XAddr) of the service implementing
-				the interface operations in the category. Apart from the addresses, the
-				capabilities only reflect optional functions.</wsdl:documentation>
+			<wsdl:documentation>This method has been replaced by the more generic GetServices method.
+			 For capabilities of individual services refer to the GetServiceCapabilities methods.</wsdl:documentation>
 			<wsdl:input message="tds:GetCapabilitiesRequest"/>
 			<wsdl:output message="tds:GetCapabilitiesResponse"/>
 		</wsdl:operation>
@@ -2737,97 +3351,6 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 			<wsdl:input message="tds:SetAccessPolicyRequest"/>
 			<wsdl:output message="tds:SetAccessPolicyResponse"/>
 		</wsdl:operation>
-		<wsdl:operation name="CreateCertificate">
-			<wsdl:documentation>This operation generates a private/public key pair and also can create a self-signed device
-				certificate as a result of key pair generation. The certificate is created using a suitable
-				onboard key pair generation mechanism.<br/>
-				If a device supports onboard key pair generation, the device that supports TLS shall support
-				this certificate creation command. And also, if a device supports onboard key pair generation,
-				the device that support IEEE 802.1X shall support this command for the purpose of key pair
-				generation. Certificates and key pairs are identified using certificate IDs. These IDs are either
-				chosen by the certificate generation requester or by the device (in case that no ID value is
-				given).</wsdl:documentation>
-			<wsdl:input message="tds:CreateCertificateRequest"/>
-			<wsdl:output message="tds:CreateCertificateResponse"/>
-		</wsdl:operation>
-		<wsdl:operation name="GetCertificates">
-			<wsdl:documentation>This operation gets all device server certificates (including self-signed) for the purpose of TLS
-				authentication and all device client certificates for the purpose of IEEE 802.1X authentication.
-				This command lists only the TLS server certificates and IEEE 802.1X client certificates for the
-				device (neither trusted CA certificates nor trusted root certificates). The certificates are
-				returned as binary data. A device that supports TLS shall support this command and the
-				certificates shall be encoded using ASN.1 [X.681], [X.682], [X.683] DER [X.690] encoding
-				rules.</wsdl:documentation>
-			<wsdl:input message="tds:GetCertificatesRequest"/>
-			<wsdl:output message="tds:GetCertificatesResponse"/>
-		</wsdl:operation>
-		<wsdl:operation name="GetCertificatesStatus">
-			<wsdl:documentation>This operation is specific to TLS functionality. This operation gets the status
-				(enabled/disabled) of the device TLS server certificates. A device that supports TLS shall
-				support this command.</wsdl:documentation>
-			<wsdl:input message="tds:GetCertificatesStatusRequest"/>
-			<wsdl:output message="tds:GetCertificatesStatusResponse"/>
-		</wsdl:operation>
-		<wsdl:operation name="SetCertificatesStatus">
-			<wsdl:documentation>This operation is specific to TLS functionality. This operation sets the status (enable/disable)
-				of the device TLS server certificates. A device that supports TLS shall support this command.
-				Typically only one device server certificate is allowed to be enabled at a time.</wsdl:documentation>
-			<wsdl:input message="tds:SetCertificatesStatusRequest"/>
-			<wsdl:output message="tds:SetCertificatesStatusResponse"/>
-		</wsdl:operation>
-		<wsdl:operation name="DeleteCertificates">
-			<wsdl:documentation>This operation deletes a certificate or multiple certificates. The device MAY also delete a
-				private/public key pair which is coupled with the certificate to be deleted. The device that
-				support either TLS or IEEE 802.1X shall support the deletion of a certificate or multiple
-				certificates through this command. Either all certificates are deleted successfully or a fault
-				message shall be returned without deleting any certificate.</wsdl:documentation>
-			<wsdl:input message="tds:DeleteCertificatesRequest"/>
-			<wsdl:output message="tds:DeleteCertificatesResponse"/>
-		</wsdl:operation>
-		<wsdl:operation name="GetPkcs10Request">
-			<wsdl:documentation>This operation requests a PKCS #10 certificate signature request from the device. The
-				returned information field shall be either formatted exactly as specified in [PKCS#10] or PEM
-				encoded [PKCS#10] format. In order for this command to work, the device must already have
-				a private/public key pair. This key pair should be referred by CertificateID as specified in the
-				input parameter description. This CertificateID refers to the key pair generated using
-				CreateCertificate command.<br/>
-				A device that support onboard key pair generation that supports either TLS or IEEE 802.1X
-				using client certificate shall support this command.</wsdl:documentation>
-			<wsdl:input message="tds:GetPkcs10RequestRequest"/>
-			<wsdl:output message="tds:GetPkcs10RequestResponse"/>
-		</wsdl:operation>
-		<wsdl:operation name="LoadCertificates">
-			<wsdl:documentation>TLS server certificate(s) or IEEE 802.1X client certificate(s) created using the PKCS#10
-				certificate request command can be loaded into the device using this command (see Section
-				8.4.13). The certificate ID in the request shall be present. The device may sort the received
-				certificate(s) based on the public key and subject information in the certificate(s).
-				The certificate ID in the request will be the ID value the client wish to have. The device is
-				supposed to scan the generated key pairs present in the device to identify which is the
-				correspondent key pair with the loaded certificate and then make the link between the
-				certificate and the key pair.<br/>
-				A device that supports onboard key pair generation that support either TLS or IEEE 802.1X
-				shall support this command.<br/>
-				The certificates shall be encoded using ASN.1 [X.681], [X.682], [X.683] DER [X.690] encoding
-				rules.<br/>
-				This command is applicable to any device type, although the parameter name is called for
-				historical reasons NVTCertificate.</wsdl:documentation>
-			<wsdl:input message="tds:LoadCertificatesRequest"/>
-			<wsdl:output message="tds:LoadCertificatesResponse"/>
-		</wsdl:operation>
-		<wsdl:operation name="GetClientCertificateMode">
-			<wsdl:documentation>This operation is specific to TLS functionality. This operation gets the status
-				(enabled/disabled) of the device TLS client authentication. A device that supports TLS shall
-				support this command.</wsdl:documentation>
-			<wsdl:input message="tds:GetClientCertificateModeRequest"/>
-			<wsdl:output message="tds:GetClientCertificateModeResponse"/>
-		</wsdl:operation>
-		<wsdl:operation name="SetClientCertificateMode">
-			<wsdl:documentation>This operation is specific to TLS functionality. This operation sets the status
-				(enabled/disabled) of the device TLS client authentication. A device that supports TLS shall
-				support this command.</wsdl:documentation>
-			<wsdl:input message="tds:SetClientCertificateModeRequest"/>
-			<wsdl:output message="tds:SetClientCertificateModeResponse"/>
-		</wsdl:operation>
 		<wsdl:operation name="GetRelayOutputs">
 			<wsdl:documentation>This operation gets a list of all available relay outputs and their settings.<br/>
 				This method has been depricated with version 2.0. Refer to the DeviceIO service.</wsdl:documentation>
@@ -2866,98 +3389,6 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 				A device that indicates auxiliary service capability shall support this command.</wsdl:documentation>
 			<wsdl:input message="tds:SendAuxiliaryCommandRequest"/>
 			<wsdl:output message="tds:SendAuxiliaryCommandResponse"/>
-		</wsdl:operation>
-		<wsdl:operation name="GetCACertificates">
-			<wsdl:documentation>CA certificates will be loaded into a device and be used for the sake of following two cases.
-				The one is for the purpose of TLS client authentication in TLS server function. The other one
-				is for the purpose of Authentication Server authentication in IEEE 802.1X function. This
-				operation gets all CA certificates loaded into a device. A device that supports either TLS client
-				authentication or IEEE 802.1X shall support this command and the returned certificates shall
-				be encoded using ASN.1 [X.681], [X.682], [X.683] DER [X.690] encoding rules.</wsdl:documentation>
-			<wsdl:input message="tds:GetCACertificatesRequest"/>
-			<wsdl:output message="tds:GetCACertificatesResponse"/>
-		</wsdl:operation>
-		<wsdl:operation name="LoadCertificateWithPrivateKey">
-			<wsdl:documentation>There might be some cases that a Certificate Authority or some other equivalent creates a
-				certificate without having PKCS#10 certificate signing request. In such cases, the certificate
-				will be bundled in conjunction with its private key. This command will be used for such use
-				case scenarios. The certificate ID in the request is optionally set to the ID value the client
-				wish to have. If the certificate ID is not specified in the request, device can choose the ID
-				accordingly.<br/>
-				This operation imports a private/public key pair into the device.
-				The certificates shall be encoded using ASN.1 [X.681], [X.682], [X.683] DER [X.690] encoding
-				rules.<br/>
-				A device that does not support onboard key pair generation and support either TLS or IEEE
-				802.1X using client certificate shall support this command. A device that support onboard key
-				pair generation MAY support this command. The security policy of a device that supports this
-				operation should make sure that the private key is sufficiently protected.</wsdl:documentation>
-			<wsdl:input message="tds:LoadCertificateWithPrivateKeyRequest"/>
-			<wsdl:output message="tds:LoadCertificateWithPrivateKeyResponse"/>
-		</wsdl:operation>
-		<wsdl:operation name="GetCertificateInformation">
-			<wsdl:documentation>This operation requests the information of a certificate specified by certificate ID. The device
-				should respond with its “Issuer DN”, “Subject DN”, “Key usage”, "Extended key usage”, “Key
-				Length”, “Version”, “Serial Number”, “Signature Algorithm” and “Validity” data as the
-				information of the certificate, as long as the device can retrieve such information from the
-				specified certificate.<br/>
-				A device that supports either TLS or IEEE 802.1X should support this command.</wsdl:documentation>
-			<wsdl:input message="tds:GetCertificateInformationRequest"/>
-			<wsdl:output message="tds:GetCertificateInformationResponse"/>
-		</wsdl:operation>
-		<wsdl:operation name="LoadCACertificates">
-			<wsdl:documentation>This command is used when it is necessary to load trusted CA certificates or trusted root
-				certificates for the purpose of verification for its counterpart i.e. client certificate verification in
-				TLS function or server certificate verification in IEEE 802.1X function.<br/>
-				A device that support either TLS or IEEE 802.1X shall support this command. As for the
-				supported certificate format, either DER format or PEM format is possible to be used. But a
-				device that support this command shall support at least DER format as supported format type.
-				The device may sort the received certificate(s) based on the public key and subject
-				information in the certificate(s). Either all CA certificates are loaded successfully or a fault
-				message shall be returned without loading any CA certificate.</wsdl:documentation>
-			<wsdl:input message="tds:LoadCACertificatesRequest"/>
-			<wsdl:output message="tds:LoadCACertificatesResponse"/>
-		</wsdl:operation>
-		<wsdl:operation name="CreateDot1XConfiguration">
-			<wsdl:documentation>This operation newly creates IEEE 802.1X configuration parameter set of the device. The
-				device shall support this command if it supports IEEE 802.1X. If the device receives this
-				request with already existing configuration token (Dot1XConfigurationToken) specification, the
-				device should respond with 'ter:ReferenceToken ' error to indicate there is some configuration
-				conflict.</wsdl:documentation>
-			<wsdl:input message="tds:CreateDot1XConfigurationRequest"/>
-			<wsdl:output message="tds:CreateDot1XConfigurationResponse"/>
-		</wsdl:operation>
-		<wsdl:operation name="SetDot1XConfiguration">
-			<wsdl:documentation>While the CreateDot1XConfiguration command is trying to create a new configuration
-				parameter set, this operation modifies existing IEEE 802.1X configuration parameter set of
-				the device. A device that support IEEE 802.1X shall support this command.</wsdl:documentation>
-			<wsdl:input message="tds:SetDot1XConfigurationRequest"/>
-			<wsdl:output message="tds:SetDot1XConfigurationResponse"/>
-		</wsdl:operation>
-		<wsdl:operation name="GetDot1XConfiguration">
-			<wsdl:documentation>This operation gets one IEEE 802.1X configuration parameter set from the device by
-				specifying the configuration token (Dot1XConfigurationToken).<br/>
-				A device that supports IEEE 802.1X shall support this command.
-				Regardless of whether the 802.1X method in the retrieved configuration has a password or
-				not, the device shall not include the Password element in the response.</wsdl:documentation>
-			<wsdl:input message="tds:GetDot1XConfigurationRequest"/>
-			<wsdl:output message="tds:GetDot1XConfigurationResponse"/>
-		</wsdl:operation>
-		<wsdl:operation name="GetDot1XConfigurations">
-			<wsdl:documentation>This operation gets all the existing IEEE 802.1X configuration parameter sets from the device.
-				The device shall respond with all the IEEE 802.1X configurations so that the client can get to
-				know how many IEEE 802.1X configurations are existing and how they are configured.<br/>
-				A device that support IEEE 802.1X shall support this command.<br/>
-				Regardless of whether the 802.1X method in the retrieved configuration has a password or
-				not, the device shall not include the Password element in the response.</wsdl:documentation>
-			<wsdl:input message="tds:GetDot1XConfigurationsRequest"/>
-			<wsdl:output message="tds:GetDot1XConfigurationsResponse"/>
-		</wsdl:operation>
-		<wsdl:operation name="DeleteDot1XConfiguration">
-			<wsdl:documentation>This operation deletes an IEEE 802.1X configuration parameter set from the device. Which
-				configuration should be deleted is specified by the 'Dot1XConfigurationToken' in the request.
-				A device that support IEEE 802.1X shall support this command.</wsdl:documentation>
-			<wsdl:input message="tds:DeleteDot1XConfigurationRequest"/>
-			<wsdl:output message="tds:DeleteDot1XConfigurationResponse"/>
 		</wsdl:operation>
 		<wsdl:operation name="GetDot11Capabilities">
 			<wsdl:documentation>This operation returns the IEEE802.11 capabilities. The device shall support
@@ -3033,6 +3464,152 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 			<wsdl:input message="tds:StartSystemRestoreRequest"/>
 			<wsdl:output message="tds:StartSystemRestoreResponse"/>
 		</wsdl:operation>
+
+		<wsdl:operation name="GetStorageConfigurations">
+			<wsdl:documentation>
+			This operation lists all existing storage configurations for the device. 
+			</wsdl:documentation>
+			<wsdl:input message="tds:GetStorageConfigurationsRequest"/>
+			<wsdl:output message="tds:GetStorageConfigurationsResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="CreateStorageConfiguration">
+			<wsdl:documentation>
+			This operation creates a new storage configuration. 
+			The configuration data shall be created in the device and shall be persistent (remain after reboot).
+			</wsdl:documentation>
+			<wsdl:input message="tds:CreateStorageConfigurationRequest"/>
+			<wsdl:output message="tds:CreateStorageConfigurationResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="GetStorageConfiguration">
+			<wsdl:documentation>
+			This operation retrieves the Storage configuration associated with the given storage configuration token.
+			</wsdl:documentation>
+			<wsdl:input message="tds:GetStorageConfigurationRequest"/>
+			<wsdl:output message="tds:GetStorageConfigurationResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="SetStorageConfiguration">
+			<wsdl:documentation>
+			This operation modifies an existing Storage configuration.
+			</wsdl:documentation>
+			<wsdl:input message="tds:SetStorageConfigurationRequest"/>
+			<wsdl:output message="tds:SetStorageConfigurationResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="DeleteStorageConfiguration">
+			<wsdl:documentation>
+			This operation deletes the given storage configuration and configuration change shall always be persistent.
+			</wsdl:documentation>
+			<wsdl:input message="tds:DeleteStorageConfigurationRequest"/>
+			<wsdl:output message="tds:DeleteStorageConfigurationResponse"/>
+		</wsdl:operation>
+
+		<wsdl:operation name="GetGeoLocation">
+			<wsdl:documentation>
+				This operation lists all existing geo location configurations for the device. 
+			</wsdl:documentation>
+			<wsdl:input message="tds:GetGeoLocationRequest"/>
+			<wsdl:output message="tds:GetGeoLocationResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="SetGeoLocation">
+			<wsdl:documentation>
+				This operation allows to modify one or more geo configuration entries.
+			</wsdl:documentation>
+			<wsdl:input message="tds:SetGeoLocationRequest"/>
+			<wsdl:output message="tds:SetGeoLocationResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="DeleteGeoLocation">
+			<wsdl:documentation>
+				This operation deletes the given geo location entries.
+			</wsdl:documentation>
+			<wsdl:input message="tds:DeleteGeoLocationRequest"/>
+			<wsdl:output message="tds:DeleteGeoLocationResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="SetHashingAlgorithm">
+		<wsdl:documentation>
+				This operation sets the hashing algorithm(s) used in HTTP and RTSP Digest Authentication.
+			</wsdl:documentation>
+			<wsdl:input message="tds:SetHashingAlgorithmRequest"/>
+			<wsdl:output message="tds:SetHashingAlgorithmResponse"/>
+		</wsdl:operation>
+
+		<!--===============================-->
+		<!--The definition and interfaces for the Security have been deprecated with release 16.12
+			The Security part was handed over to Security Configuration Service.
+			For backward compatibility the methods remains in the devicemgmt.wsdl file.-->
+		
+		<wsdl:operation name="CreateCertificate">
+			<wsdl:input message="tds:CreateCertificateRequest"/>
+			<wsdl:output message="tds:CreateCertificateResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="GetCertificates">
+			<wsdl:input message="tds:GetCertificatesRequest"/>
+			<wsdl:output message="tds:GetCertificatesResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="GetCertificatesStatus">
+			<wsdl:input message="tds:GetCertificatesStatusRequest"/>
+			<wsdl:output message="tds:GetCertificatesStatusResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="SetCertificatesStatus">
+			<wsdl:input message="tds:SetCertificatesStatusRequest"/>
+			<wsdl:output message="tds:SetCertificatesStatusResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="DeleteCertificates">
+			<wsdl:input message="tds:DeleteCertificatesRequest"/>
+			<wsdl:output message="tds:DeleteCertificatesResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="GetPkcs10Request">
+			<wsdl:input message="tds:GetPkcs10RequestRequest"/>
+			<wsdl:output message="tds:GetPkcs10RequestResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="LoadCertificates">
+			<wsdl:input message="tds:LoadCertificatesRequest"/>
+			<wsdl:output message="tds:LoadCertificatesResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="GetClientCertificateMode">
+			<wsdl:input message="tds:GetClientCertificateModeRequest"/>
+			<wsdl:output message="tds:GetClientCertificateModeResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="SetClientCertificateMode">
+			<wsdl:input message="tds:SetClientCertificateModeRequest"/>
+			<wsdl:output message="tds:SetClientCertificateModeResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="GetCACertificates">
+			<wsdl:input message="tds:GetCACertificatesRequest"/>
+			<wsdl:output message="tds:GetCACertificatesResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="LoadCertificateWithPrivateKey">
+			<wsdl:input message="tds:LoadCertificateWithPrivateKeyRequest"/>
+			<wsdl:output message="tds:LoadCertificateWithPrivateKeyResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="GetCertificateInformation">
+			<wsdl:input message="tds:GetCertificateInformationRequest"/>
+			<wsdl:output message="tds:GetCertificateInformationResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="LoadCACertificates">
+			<wsdl:input message="tds:LoadCACertificatesRequest"/>
+			<wsdl:output message="tds:LoadCACertificatesResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="CreateDot1XConfiguration">
+			<wsdl:input message="tds:CreateDot1XConfigurationRequest"/>
+			<wsdl:output message="tds:CreateDot1XConfigurationResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="SetDot1XConfiguration">
+			<wsdl:input message="tds:SetDot1XConfigurationRequest"/>
+			<wsdl:output message="tds:SetDot1XConfigurationResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="GetDot1XConfiguration">
+			<wsdl:input message="tds:GetDot1XConfigurationRequest"/>
+			<wsdl:output message="tds:GetDot1XConfigurationResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="GetDot1XConfigurations">
+			<wsdl:input message="tds:GetDot1XConfigurationsRequest"/>
+			<wsdl:output message="tds:GetDot1XConfigurationsResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="DeleteDot1XConfiguration">
+			<wsdl:input message="tds:DeleteDot1XConfigurationRequest"/>
+			<wsdl:output message="tds:DeleteDot1XConfigurationResponse"/>
+		</wsdl:operation>		
+		<!--===============================-->
+
 	</wsdl:portType>
 	<wsdl:binding name="DeviceBinding" type="tds:Device">
 		<soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
@@ -3290,6 +3867,78 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 		</wsdl:operation>
 		<wsdl:operation name="GetWsdlUrl">
 			<soap:operation soapAction="http://www.onvif.org/ver10/device/wsdl/GetWsdlUrl"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+		<wsdl:operation name="GetPasswordComplexityOptions">
+			<soap:operation soapAction="http://www.onvif.org/ver10/device/wsdl/GetPasswordComplexityOptions"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+		<wsdl:operation name="GetPasswordComplexityConfiguration">
+			<soap:operation soapAction="http://www.onvif.org/ver10/device/wsdl/GetPasswordComplexityConfiguration"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+		<wsdl:operation name="SetPasswordComplexityConfiguration">
+			<soap:operation soapAction="http://www.onvif.org/ver10/device/wsdl/SetPasswordComplexityConfiguration"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+		<wsdl:operation name="GetPasswordHistoryConfiguration">
+			<soap:operation soapAction="http://www.onvif.org/ver10/device/wsdl/GetPasswordHistoryConfiguration"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+		<wsdl:operation name="SetPasswordHistoryConfiguration">
+			<soap:operation soapAction="http://www.onvif.org/ver10/device/wsdl/SetPasswordHistoryConfiguration"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+        	<wsdl:operation name="GetAuthFailureWarningOptions">
+			<soap:operation soapAction="http://www.onvif.org/ver10/device/wsdl/GetAuthFailureWarningOptions"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+		<wsdl:operation name="GetAuthFailureWarningConfiguration">
+			<soap:operation soapAction="http://www.onvif.org/ver10/device/wsdl/GetAuthFailureWarningConfiguration"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+		<wsdl:operation name="SetAuthFailureWarningConfiguration">
+			<soap:operation soapAction="http://www.onvif.org/ver10/device/wsdl/SetAuthFailureWarningConfiguration"/>
 			<wsdl:input>
 				<soap:body use="literal"/>
 			</wsdl:input>
@@ -3774,10 +4423,92 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 				<soap:body use="literal"/>
 			</wsdl:output>
 		</wsdl:operation>
+
+		<wsdl:operation name="GetStorageConfigurations">
+			<soap:operation soapAction="http://www.onvif.org/ver10/device/wsdl/GetStorageConfigurations"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+		<wsdl:operation name="CreateStorageConfiguration">
+			<soap:operation soapAction="http://www.onvif.org/ver10/device/wsdl/CreateStorageConfiguration"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+		<wsdl:operation name="GetStorageConfiguration">
+			<soap:operation soapAction="http://www.onvif.org/ver10/device/wsdl/GetStorageConfiguration"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+		<wsdl:operation name="SetStorageConfiguration">
+			<soap:operation soapAction="http://www.onvif.org/ver10/device/wsdl/SetStorageConfiguration"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+		<wsdl:operation name="DeleteStorageConfiguration">
+			<soap:operation soapAction="http://www.onvif.org/ver10/device/wsdl/DeleteStorageConfiguration"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+
+		<wsdl:operation name="GetGeoLocation">
+			<soap:operation soapAction="http://www.onvif.org/ver10/device/wsdl/GetGeoLocation"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+		<wsdl:operation name="SetGeoLocation">
+			<soap:operation soapAction="http://www.onvif.org/ver10/device/wsdl/SetGeoLocation"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+		<wsdl:operation name="DeleteGeoLocation">
+			<soap:operation soapAction="http://www.onvif.org/ver10/device/wsdl/DeleteGeoLocation"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+		<wsdl:operation name="SetHashingAlgorithm">
+			<soap:operation soapAction="http://www.onvif.org/ver10/device/wsdl/SetHashingAlgorithm"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+		
+		
 	</wsdl:binding>
-    <wsdl:service name="DeviceService">
-        <wsdl:port name="DevicePort" binding="tds:DeviceBinding">
-            <soap:address location="http://192.168.0.51:8888/onvif/device_service"/>
-        </wsdl:port>
-    </wsdl:service>
+	<!--===============================-->
+	<!--===============================-->
 </wsdl:definitions>

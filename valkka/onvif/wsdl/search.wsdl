@@ -879,9 +879,4 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 		<!--===============================-->
 		<!--===============================-->
 	</wsdl:binding>
-    <wsdl:service name="SearchService">
-        <wsdl:port name="ServicePort" binding="tse:SearchBinding">
-            <soap:address location="http://192.168.0.51:8888/onvif/Search"/>
-        </wsdl:port>
-    </wsdl:service>
 </wsdl:definitions>

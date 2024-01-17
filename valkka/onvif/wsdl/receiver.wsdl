@@ -395,9 +395,4 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 			</wsdl:output>
 		</wsdl:operation>
 	</wsdl:binding>
-    <wsdl:service name="ReceiverService">
-        <wsdl:port name="ReceiverPort" binding="trv:ReceiverBinding">
-            <soap:address location="http://192.168.0.51:8888/onvif/Receiver"/>
-        </wsdl:port>
-    </wsdl:service>
 </wsdl:definitions>

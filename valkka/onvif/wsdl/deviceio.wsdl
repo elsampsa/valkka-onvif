@@ -1,18 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <?xml-stylesheet type="text/xsl" href="../ver20/util/onvif-wsdl-viewer.xsl"?>
 <!--
-Copyright (c) 2008-2012 by ONVIF: Open Network Video Interface Forum. All rights reserved.
+Copyright (c) 2008-2021 by ONVIF: Open Network Video Interface Forum. All rights reserved.
 
 Recipients of this document may copy, distribute, publish, or display this document so long as this copyright notice, license and disclaimer are retained with all copies of the document. No license is granted to modify this document.
 
 THIS DOCUMENT IS PROVIDED "AS IS," AND THE CORPORATION AND ITS MEMBERS AND THEIR AFFILIATES, MAKE NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO, WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT, OR TITLE; THAT THE CONTENTS OF THIS DOCUMENT ARE SUITABLE FOR ANY PURPOSE; OR THAT THE IMPLEMENTATION OF SUCH CONTENTS WILL NOT INFRINGE ANY PATENTS, COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS.
 IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FOR ANY DIRECT, INDIRECT, SPECIAL, INCIDENTAL, PUNITIVE OR CONSEQUENTIAL DAMAGES, ARISING OUT OF OR RELATING TO ANY USE OR DISTRIBUTION OF THIS DOCUMENT, WHETHER OR NOT (1) THE CORPORATION, MEMBERS OR THEIR AFFILIATES HAVE BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES, OR (2) SUCH DAMAGES WERE REASONABLY FORESEEABLE, AND ARISING OUT OF OR RELATING TO ANY USE OR DISTRIBUTION OF THIS DOCUMENT.  THE FOREGOING DISCLAIMER AND LIMITATION ON LIABILITY DO NOT APPLY TO, INVALIDATE, OR LIMIT REPRESENTATIONS AND WARRANTIES MADE BY THE MEMBERS AND THEIR RESPECTIVE AFFILIATES TO THE CORPORATION AND OTHER MEMBERS IN CERTAIN WRITTEN POLICIES OF THE CORPORATION.
 -->
-<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap12/" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:trt="http://www.onvif.org/ver10/media/wsdl" xmlns:tds="http://www.onvif.org/ver10/device/wsdl" xmlns:tmd="http://www.onvif.org/ver10/deviceIO/wsdl" targetNamespace="http://www.onvif.org/ver10/deviceIO/wsdl">
-	<wsdl:import namespace="http://www.onvif.org/ver10/media/wsdl" location="media.wsdl"/>
-	<wsdl:import namespace="http://www.onvif.org/ver10/device/wsdl" location="devicemgmt.wsdl"/>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap12/" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:tds="http://www.onvif.org/ver10/device/wsdl" xmlns:tmd="http://www.onvif.org/ver10/deviceIO/wsdl" targetNamespace="http://www.onvif.org/ver10/deviceIO/wsdl">
+	<wsdl:import namespace="http://www.onvif.org/ver10/device/wsdl" location="../ver10/device/wsdl/devicemgmt.wsdl"/>
 	<wsdl:types>
-		<xs:schema targetNamespace="http://www.onvif.org/ver10/deviceIO/wsdl" xmlns:tt="http://www.onvif.org/ver10/schema" xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" version="2.4.1">
+		<xs:schema targetNamespace="http://www.onvif.org/ver10/deviceIO/wsdl" xmlns:tt="http://www.onvif.org/ver10/schema" xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" version="21.06">
 			<xs:import namespace="http://www.onvif.org/ver10/schema" schemaLocation="./onvif.xsd"/>
 			<!--===============================-->
 			<xs:element name="GetServiceCapabilities">
@@ -34,7 +33,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 			<!--===============================-->
 			<xs:complexType name="Capabilities">
 				<xs:sequence>
-					<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+					<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>   <!-- first Vendor then ONVIF -->
 				</xs:sequence>
 				<xs:attribute name="VideoSources" type="xs:int" default="0">
 					<xs:annotation>
@@ -69,6 +68,11 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 				<xs:attribute name="DigitalInputs" type="xs:int" default="0">
 					<xs:annotation>
 						<xs:documentation>Number of digital inputs (defaults to none).</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="DigitalInputOptions" type="xs:boolean" default="false">
+					<xs:annotation>
+						<xs:documentation>Indicates support for DigitalInput configuration of the idle state (defaults to false).</xs:documentation>
 					</xs:annotation>
 				</xs:attribute>
 				<xs:anyAttribute processContents="lax"/>
@@ -108,7 +112,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 							<xs:documentation>Supported Modes.</xs:documentation>
 						</xs:annotation>
 					</xs:element>
-					<xs:element name="DelayTimes" type="tmd:DelayTimes" minOccurs="0">
+					<xs:element name="DelayTimes" type="tt:FloatList" minOccurs="0">
 						<xs:annotation>
 							<xs:documentation>Supported delay time range or discrete values in seconds. This element must be present if MonoStable mode is supported.</xs:documentation>
 						</xs:annotation>
@@ -129,12 +133,29 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 			</xs:complexType>
 			<xs:complexType name="RelayOutputOptionsExtension">
 				<xs:sequence>
-					<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+					<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>   <!-- first Vendor then ONVIF -->
 				</xs:sequence>
 			</xs:complexType>
-			<xs:simpleType name="DelayTimes">
-				<xs:list itemType="xs:float"/>
-			</xs:simpleType>
+			<!--===============================-->
+			<xs:complexType name="Get">
+				<xs:sequence>
+				</xs:sequence>
+			</xs:complexType>
+			<xs:complexType name="GetResponse">
+				<xs:sequence>
+					<xs:element name="Token" type="tt:ReferenceToken" minOccurs="0" maxOccurs="unbounded">
+						<xs:annotation>
+							<xs:documentation>List tokens of a physical IO of a device.</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+				</xs:sequence>
+			</xs:complexType>
+			<xs:element name="GetVideoSources" type="tmd:Get"/>
+			<xs:element name="GetVideoSourcesResponse" type="tmd:GetResponse"/>
+			<xs:element name="GetAudioSources" type="tmd:Get"/>
+			<xs:element name="GetAudioSourcesResponse" type="tmd:GetResponse"/>
+			<xs:element name="GetAudioOutputs" type="tmd:Get"/>
+			<xs:element name="GetAudioOutputsResponse" type="tmd:GetResponse"/>
 			<!--===============================-->
 			<xs:element name="GetVideoOutputs">
 				<xs:complexType>
@@ -162,7 +183,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 								<xs:documentation>Token of the requested AudioSource.</xs:documentation>
 							</xs:annotation>
 						</xs:element>
-						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>   <!-- first Vendor then ONVIF -->
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
@@ -174,7 +195,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 								<xs:documentation>Current configuration of the Audio input.</xs:documentation>
 							</xs:annotation>
 						</xs:element>
-						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>   <!-- first Vendor then ONVIF -->
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
@@ -187,7 +208,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 								<xs:documentation>Token of the physical Audio output.</xs:documentation>
 							</xs:annotation>
 						</xs:element>
-						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>   <!-- first Vendor then ONVIF -->
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
@@ -199,7 +220,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 								<xs:documentation>Current configuration of the Audio output.</xs:documentation>
 							</xs:annotation>
 						</xs:element>
-						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>   <!-- first Vendor then ONVIF -->
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
@@ -212,7 +233,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 								<xs:documentation>Token of the requested VideoSource.</xs:documentation>
 							</xs:annotation>
 						</xs:element>
-						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>   <!-- first Vendor then ONVIF -->
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
@@ -224,7 +245,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 								<xs:documentation>Current configuration of the Video input.</xs:documentation>
 							</xs:annotation>
 						</xs:element>
-						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>   <!-- first Vendor then ONVIF -->
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
@@ -237,7 +258,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 								<xs:documentation>Token of the requested VideoOutput.</xs:documentation>
 							</xs:annotation>
 						</xs:element>
-						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>   <!-- first Vendor then ONVIF -->
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
@@ -249,7 +270,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 								<xs:documentation>Current configuration of the Video output.</xs:documentation>
 							</xs:annotation>
 						</xs:element>
-						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>   <!-- first Vendor then ONVIF -->
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
@@ -265,14 +286,14 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 							after reboot.</xs:documentation>
 							</xs:annotation>
 						</xs:element>
-						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>   <!-- first Vendor then ONVIF -->
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
 			<xs:element name="SetAudioSourceConfigurationResponse">
 				<xs:complexType>
 					<xs:sequence>
-						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>   <!-- first Vendor then ONVIF -->
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
@@ -288,14 +309,14 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 							after reboot.</xs:documentation>
 							</xs:annotation>
 						</xs:element>
-						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>   <!-- first Vendor then ONVIF -->
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
 			<xs:element name="SetAudioOutputConfigurationResponse">
 				<xs:complexType>
 					<xs:sequence>
-						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>   <!-- first Vendor then ONVIF -->
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
@@ -311,14 +332,14 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 							after reboot.</xs:documentation>
 							</xs:annotation>
 						</xs:element>
-						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>   <!-- first Vendor then ONVIF -->
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
 			<xs:element name="SetVideoSourceConfigurationResponse">
 				<xs:complexType>
 					<xs:sequence>
-						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>   <!-- first Vendor then ONVIF -->
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
@@ -334,14 +355,14 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 							after reboot.</xs:documentation>
 							</xs:annotation>
 						</xs:element>
-						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>   <!-- first Vendor then ONVIF -->
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
 			<xs:element name="SetVideoOutputConfigurationResponse">
 				<xs:complexType>
 					<xs:sequence>
-						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>   <!-- first Vendor then ONVIF -->
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
@@ -354,7 +375,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 								<xs:documentation>Token of the Video input whose options are requested..</xs:documentation>
 							</xs:annotation>
 						</xs:element>
-						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>   <!-- first Vendor then ONVIF -->
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
@@ -362,7 +383,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 				<xs:complexType>
 					<xs:sequence>
 						<xs:element name="VideoSourceConfigurationOptions" type="tt:VideoSourceConfigurationOptions"/>
-						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>   <!-- first Vendor then ONVIF -->
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
@@ -375,7 +396,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 								<xs:documentation>Token of the Video Output whose options are requested..</xs:documentation>
 							</xs:annotation>
 						</xs:element>
-						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>   <!-- first Vendor then ONVIF -->
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
@@ -383,7 +404,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 				<xs:complexType>
 					<xs:sequence>
 						<xs:element name="VideoOutputConfigurationOptions" type="tt:VideoOutputConfigurationOptions"/>
-						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>   <!-- first Vendor then ONVIF -->
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
@@ -396,7 +417,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 								<xs:documentation>Token of the physical Audio input whose options are requested..</xs:documentation>
 							</xs:annotation>
 						</xs:element>
-						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>   <!-- first Vendor then ONVIF -->
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
@@ -408,7 +429,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 								<xs:documentation>Returns the AudioSourceToken available.</xs:documentation>
 							</xs:annotation>
 						</xs:element>
-						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>   <!-- first Vendor then ONVIF -->
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
@@ -421,7 +442,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 								<xs:documentation>Token of the physical Audio Output whose options are requested..</xs:documentation>
 							</xs:annotation>
 						</xs:element>
-						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>   <!-- first Vendor then ONVIF -->
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
@@ -433,7 +454,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 								<xs:documentation>Available settings and ranges for the requested Audio output.</xs:documentation>
 							</xs:annotation>
 						</xs:element>
-						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+						<xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>   <!-- first Vendor then ONVIF -->
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
@@ -468,6 +489,47 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 				<xs:complexType>
 					<xs:sequence>
 						<xs:element name="DigitalInputs" type="tt:DigitalInput" minOccurs="0" maxOccurs="unbounded"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<!--===============================-->
+			<xs:complexType name="DigitalInputConfigurationOptions">
+				<xs:sequence>
+					<xs:element name="IdleState" type="tt:DigitalIdleState" maxOccurs="unbounded">
+						<xs:annotation>
+							<xs:documentation>Configuration Options for a digital input.</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>   <!-- first ONVIF then Vendor -->
+				</xs:sequence>
+				<xs:anyAttribute processContents="lax"/>
+			</xs:complexType>
+			<!--===============================-->
+			<xs:element name="GetDigitalInputConfigurationOptions">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="Token" type="tt:ReferenceToken" minOccurs="0"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="GetDigitalInputConfigurationOptionsResponse">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="DigitalInputOptions" type="tmd:DigitalInputConfigurationOptions"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<!--===============================-->
+			<xs:element name="SetDigitalInputConfigurations">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="DigitalInputs" type="tt:DigitalInput" maxOccurs="unbounded"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="SetDigitalInputConfigurationsResponse">
+				<xs:complexType>
+					<xs:sequence>
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
@@ -558,6 +620,11 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 				</xs:annotation>
 				<xs:complexType>
 					<xs:sequence>
+						<xs:element name="Token" type="tt:ReferenceToken" minOccurs="0">
+							<xs:annotation>
+								<xs:documentation>The physical serial port reference to be used when this request is invoked.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
 						<xs:element name="SerialData" type="tmd:SerialData" minOccurs="0">
 							<xs:annotation>
 								<xs:documentation>The serial port data.</xs:documentation>
@@ -612,7 +679,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 				<xs:complexContent>
 					<xs:extension base="tt:DeviceEntity">
 						<xs:sequence>
-							<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+							<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>   <!-- first Vendor then ONVIF -->
 						</xs:sequence>
 						<xs:anyAttribute processContents="lax"/>
 					</xs:extension>
@@ -658,7 +725,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 							<xs:documentation>The number of stop bits used to terminate each character.</xs:documentation>
 						</xs:annotation>
 					</xs:element>
-					<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+					<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>   <!-- first Vendor then ONVIF -->
 				</xs:sequence>
 				<xs:attribute name="token" type="tt:ReferenceToken" use="required"/>
 				<xs:attribute name="type" type="tmd:SerialPortType" use="required"/>
@@ -684,7 +751,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 					<xs:documentation>The configuration options that relates to serial port.</xs:documentation>
 				</xs:annotation>
 				<xs:sequence>
-					<xs:element name="BaudRateList" type="tt:IntList">
+					<xs:element name="BaudRateList" type="tt:IntItems">
 						<xs:annotation>
 							<xs:documentation>The list of configurable transfer bitrate.</xs:documentation>
 						</xs:annotation>
@@ -694,17 +761,17 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 							<xs:documentation>The list of configurable parity for the data error detection.</xs:documentation>
 						</xs:annotation>
 					</xs:element>
-					<xs:element name="CharacterLengthList" type="tt:IntList">
+					<xs:element name="CharacterLengthList" type="tt:IntItems">
 						<xs:annotation>
 							<xs:documentation>The list of configurable bit length for each character.</xs:documentation>
 						</xs:annotation>
 					</xs:element>
-					<xs:element name="StopBitList" type="tt:FloatList">
+					<xs:element name="StopBitList" type="tt:FloatItems">
 						<xs:annotation>
 							<xs:documentation>The list of configurable number of stop bits used to terminate each character.</xs:documentation>
 						</xs:annotation>
 					</xs:element>
-					<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+					<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>   <!-- first Vendor then ONVIF -->
 				</xs:sequence>
 				<xs:attribute name="token" type="tt:ReferenceToken" use="required"/>
 				<xs:anyAttribute processContents="lax"/>
@@ -739,22 +806,22 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 		<wsdl:part name="parameters" element="tmd:GetVideoOutputsResponse"/>
 	</wsdl:message>
 	<wsdl:message name="GetAudioOutputsRequest">
-		<wsdl:part name="parameters" element="trt:GetAudioOutputs"/>
+		<wsdl:part name="parameters" element="tmd:GetAudioOutputs"/>
 	</wsdl:message>
 	<wsdl:message name="GetAudioOutputsResponse">
-		<wsdl:part name="parameters" element="trt:GetAudioOutputsResponse"/>
+		<wsdl:part name="parameters" element="tmd:GetAudioOutputsResponse"/>
 	</wsdl:message>
 	<wsdl:message name="GetVideoSourcesRequest">
-		<wsdl:part name="parameters" element="trt:GetVideoSources"/>
+		<wsdl:part name="parameters" element="tmd:GetVideoSources"/>
 	</wsdl:message>
 	<wsdl:message name="GetVideoSourcesResponse">
-		<wsdl:part name="parameters" element="trt:GetVideoSourcesResponse"/>
+		<wsdl:part name="parameters" element="tmd:GetVideoSourcesResponse"/>
 	</wsdl:message>
 	<wsdl:message name="GetAudioSourcesRequest">
-		<wsdl:part name="parameters" element="trt:GetAudioSources"/>
+		<wsdl:part name="parameters" element="tmd:GetAudioSources"/>
 	</wsdl:message>
 	<wsdl:message name="GetAudioSourcesResponse">
-		<wsdl:part name="parameters" element="trt:GetAudioSourcesResponse"/>
+		<wsdl:part name="parameters" element="tmd:GetAudioSourcesResponse"/>
 	</wsdl:message>
 	<wsdl:message name="GetVideoSourceConfigurationRequest">
 		<wsdl:part name="parameters" element="tmd:GetVideoSourceConfiguration"/>
@@ -852,6 +919,18 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 	<wsdl:message name="GetDigitalInputsResponse">
 		<wsdl:part name="parameters" element="tmd:GetDigitalInputsResponse"/>
 	</wsdl:message>
+	<wsdl:message name="GetDigitalInputConfigurationOptionsRequest">
+		<wsdl:part name="parameters" element="tmd:GetDigitalInputConfigurationOptions"/>
+	</wsdl:message>                                         
+	<wsdl:message name="GetDigitalInputConfigurationOptionsResponse">
+		<wsdl:part name="parameters" element="tmd:GetDigitalInputConfigurationOptionsResponse"/>
+	</wsdl:message>
+	<wsdl:message name="SetDigitalInputConfigurationsRequest">
+		<wsdl:part name="parameters" element="tmd:SetDigitalInputConfigurations"/>
+	</wsdl:message>
+	<wsdl:message name="SetDigitalInputConfigurationsResponse">
+		<wsdl:part name="parameters" element="tmd:SetDigitalInputConfigurationsResponse"/>
+	</wsdl:message>
 	<wsdl:message name="GetSerialPortsRequest">
 		<wsdl:part name="parameters" element="tmd:GetSerialPorts"/>
 	</wsdl:message>
@@ -938,7 +1017,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 		</wsdl:operation>
 		<!--===============================-->
 		<wsdl:operation name="GetVideoSourceConfiguration">
-			<wsdl:documentation>Get the video source configurations of a VideoSource. A device with one or more video sources shall support the GetVideoSourceConfigurations command..</wsdl:documentation>
+			<wsdl:documentation>Get the video source configurations of a VideoSource. A device with one or more video sources shall support the GetVideoSourceConfigurations command.<br/>This method is deprecated.</wsdl:documentation>
 			<wsdl:input message="tmd:GetVideoSourceConfigurationRequest"/>
 			<wsdl:output message="tmd:GetVideoSourceConfigurationResponse"/>
 		</wsdl:operation>
@@ -948,18 +1027,18 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 			<wsdl:output message="tmd:GetVideoOutputConfigurationResponse"/>
 		</wsdl:operation>
 		<wsdl:operation name="GetAudioSourceConfiguration">
-			<wsdl:documentation>List the configuration of an Audio Input. A device with one or more audio inputs shall support the GetAudioSourceConfiguration command.</wsdl:documentation>
+			<wsdl:documentation>List the configuration of an Audio Input. A device with one or more audio inputs shall support the GetAudioSourceConfiguration command.<br/>This method is deprecated.</wsdl:documentation>
 			<wsdl:input message="tmd:GetAudioSourceConfigurationRequest"/>
 			<wsdl:output message="tmd:GetAudioSourceConfigurationResponse"/>
 		</wsdl:operation>
 		<wsdl:operation name="GetAudioOutputConfiguration">
-			<wsdl:documentation>Request the current configuration of a physical Audio output. A device that has one or more AudioOutputs shall support the retrieval of the AudioOutputConfiguration through this command.</wsdl:documentation>
+			<wsdl:documentation>Request the current configuration of a physical Audio output. A device that has one or more AudioOutputs shall support the retrieval of the AudioOutputConfiguration through this command.<br/>This method is deprecated.</wsdl:documentation>
 			<wsdl:input message="tmd:GetAudioOutputConfigurationRequest"/>
 			<wsdl:output message="tmd:GetAudioOutputConfigurationResponse"/>
 		</wsdl:operation>
 		<!--===============================-->
 		<wsdl:operation name="SetVideoSourceConfiguration">
-			<wsdl:documentation>Modify a video input configuration. A device that has one or more video sources shall support the setting of the VideoSourceConfiguration through this command.</wsdl:documentation>
+			<wsdl:documentation>Modify a video input configuration. A device that has one or more video sources shall support the setting of the VideoSourceConfiguration through this command.<br/>This method is deprecated.</wsdl:documentation>
 			<wsdl:input message="tmd:SetVideoSourceConfigurationRequest"/>
 			<wsdl:output message="tmd:SetVideoSourceConfigurationResponse"/>
 		</wsdl:operation>
@@ -969,18 +1048,18 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 			<wsdl:output message="tmd:SetVideoOutputConfigurationResponse"/>
 		</wsdl:operation>
 		<wsdl:operation name="SetAudioSourceConfiguration">
-			<wsdl:documentation>Modify an audio source configuration. A device that has a one or more audio sources shall support the setting of the AudioSourceConfiguration through this command.</wsdl:documentation>
+			<wsdl:documentation>Modify an audio source configuration. A device that has a one or more audio sources shall support the setting of the AudioSourceConfiguration through this command.<br/>This method is deprecated.</wsdl:documentation>
 			<wsdl:input message="tmd:SetAudioSourceConfigurationRequest"/>
 			<wsdl:output message="tmd:SetAudioSourceConfigurationResponse"/>
 		</wsdl:operation>
 		<wsdl:operation name="SetAudioOutputConfiguration">
-			<wsdl:documentation>Modify an audio output configuration. A device that has one ore more audio outputs shall support the setting of the AudioOutputConfiguration through this command.</wsdl:documentation>
+			<wsdl:documentation>Modify an audio output configuration. A device that has one ore more audio outputs shall support the setting of the AudioOutputConfiguration through this command.<br/>This method is deprecated.</wsdl:documentation>
 			<wsdl:input message="tmd:SetAudioOutputConfigurationRequest"/>
 			<wsdl:output message="tmd:SetAudioOutputConfigurationResponse"/>
 		</wsdl:operation>
 		<!--===============================-->
 		<wsdl:operation name="GetVideoSourceConfigurationOptions">
-			<wsdl:documentation>Request the VideoSourceConfigurationOptions of a VideoSource. A device with one or more video sources shall support this command.</wsdl:documentation>
+			<wsdl:documentation>Request the VideoSourceConfigurationOptions of a VideoSource. A device with one or more video sources shall support this command.<br/>This method is deprecated.</wsdl:documentation>
 			<wsdl:input message="tmd:GetVideoSourceConfigurationOptionsRequest"/>
 			<wsdl:output message="tmd:GetVideoSourceConfigurationOptionsResponse"/>
 		</wsdl:operation>
@@ -990,12 +1069,12 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 			<wsdl:output message="tmd:GetVideoOutputConfigurationOptionsResponse"/>
 		</wsdl:operation>
 		<wsdl:operation name="GetAudioSourceConfigurationOptions">
-			<wsdl:documentation>Request the AudioSourceConfigurationOptions of an AudioSource. A device with one ore more AudioSources shall support this command.</wsdl:documentation>
+			<wsdl:documentation>Request the AudioSourceConfigurationOptions of an AudioSource. A device with one ore more AudioSources shall support this command.<br/>This method is deprecated.</wsdl:documentation>
 			<wsdl:input message="tmd:GetAudioSourceConfigurationOptionsRequest"/>
 			<wsdl:output message="tmd:GetAudioSourceConfigurationOptionsResponse"/>
 		</wsdl:operation>
 		<wsdl:operation name="GetAudioOutputConfigurationOptions">
-			<wsdl:documentation>Request the available settings and ranges for a physical Audio output. A device that has one or more AudioOutputs shall support this command.</wsdl:documentation>
+			<wsdl:documentation>Request the available settings and ranges for a physical Audio output. A device that has one or more AudioOutputs shall support this command.<br/>This method is deprecated.</wsdl:documentation>
 			<wsdl:input message="tmd:GetAudioOutputConfigurationOptionsRequest"/>
 			<wsdl:output message="tmd:GetAudioOutputConfigurationOptionsResponse"/>
 		</wsdl:operation>
@@ -1030,8 +1109,19 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 			<wsdl:output message="tmd:SetRelayOutputStateResponse"/>
 		</wsdl:operation>
 		<wsdl:operation name="GetDigitalInputs">
+			<wsdl:documentation>This operation gets a list of all available digital inputs.</wsdl:documentation>
 			<wsdl:input message="tmd:GetDigitalInputsRequest"/>
 			<wsdl:output message="tmd:GetDigitalInputsResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="GetDigitalInputConfigurationOptions">
+			<wsdl:documentation>This operation lists what configuration is available for digital inputs.</wsdl:documentation>
+			<wsdl:input message="tmd:GetDigitalInputConfigurationOptionsRequest"/>
+			<wsdl:output message="tmd:GetDigitalInputConfigurationOptionsResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="SetDigitalInputConfigurations">
+			<wsdl:documentation>Modify a digital input configuration.</wsdl:documentation>
+			<wsdl:input message="tmd:SetDigitalInputConfigurationsRequest"/>
+			<wsdl:output message="tmd:SetDigitalInputConfigurationsResponse"/>
 		</wsdl:operation>
 		<wsdl:operation name="GetSerialPorts">
 			<wsdl:input message="tmd:GetSerialPortsRequest"/>
@@ -1257,6 +1347,24 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 				<soap:body use="literal"/>
 			</wsdl:output>
 		</wsdl:operation>
+		<wsdl:operation name="GetDigitalInputConfigurationOptions">
+			<soap:operation soapAction="http://www.onvif.org/ver10/deviceio/wsdl/GetDigitalInputConfigurationOptions"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+		<wsdl:operation name="SetDigitalInputConfigurations">
+			<soap:operation soapAction="http://www.onvif.org/ver10/deviceio/wsdl/SetDigitalInputConfigurations"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
 		<wsdl:operation name="GetSerialPorts">
 			<soap:operation soapAction="http://www.onvif.org/ver10/deviceio/wsdl/GetSerialPorts"/>
 			<wsdl:input>
@@ -1303,9 +1411,4 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 			</wsdl:output>
 		</wsdl:operation>
 	</wsdl:binding>
-    <wsdl:service name="DeviceIOService">
-        <wsdl:port name="DeviceIOPort" binding="tmd:DeviceIOBinding">
-            <soap:address location="http://192.168.0.51:8888/onvif/DeviceIO"/>
-        </wsdl:port>
-    </wsdl:service>
 </wsdl:definitions>

@@ -1,3 +1,4 @@
 #!/bin/bash 
 rm ../*
-find . -type f ! \( -name "*.py" -o -name "*.ipynb" -o -name "*.bash" \) -exec cp {} .. \;
+echo copyinf files to upper level directory
+find . -type f ! \( -name "*.py" -o -name "*.ipynb" -o -name "*.bash" -name "*.md" \) -exec cp -v {} .. \;

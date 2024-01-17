@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <?xml-stylesheet type="text/xsl" href="../ver20/util/onvif-wsdl-viewer.xsl"?>
 <!--
-Copyright (c) 2008-2014 by ONVIF: Open Network Video Interface Forum. All rights reserved.
+Copyright (c) 2008-2023 by ONVIF: Open Network Video Interface Forum. All rights reserved.
 
 Recipients of this document may copy, distribute, publish, or display this document so long as this copyright notice, license and disclaimer are retained with all copies of the document. No license is granted to modify this document.
 
@@ -10,7 +10,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 -->
 <wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap12/" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:trc="http://www.onvif.org/ver10/recording/wsdl" targetNamespace="http://www.onvif.org/ver10/recording/wsdl">
 	<wsdl:types>
-		<xs:schema targetNamespace="http://www.onvif.org/ver10/recording/wsdl" xmlns:tt="http://www.onvif.org/ver10/schema" xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" version="2.4.2">
+		<xs:schema targetNamespace="http://www.onvif.org/ver10/recording/wsdl" xmlns:tt="http://www.onvif.org/ver10/schema" xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" version="23.06">
 			<xs:import namespace="http://www.onvif.org/ver10/schema" schemaLocation="./onvif.xsd"/>
 			<!--  Message Request/Responses elements  -->
 			<!--===============================-->
@@ -33,7 +33,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 			<!--===============================-->
 			<xs:complexType name="Capabilities">
 				<xs:sequence>
-					<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+					<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>	 <!-- first Vendor then ONVIF -->
 				</xs:sequence>
 				<xs:attribute name="DynamicRecordings" type="xs:boolean">
 					<xs:annotation>
@@ -45,9 +45,9 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 						<xs:documentation>Indication if the device supports dynamic creation and deletion of tracks</xs:documentation>
 					</xs:annotation>
 				</xs:attribute>
-				<xs:attribute name="Encoding" type="trc:EncodingTypes">
+				<xs:attribute name="Encoding" type="tt:StringList">
 					<xs:annotation>
-						<xs:documentation>Indication which encodings are supported for recording. The list may contain one or more enumeration values of tt:VideoEncoding and tt:AudioEncoding. If device does not support audio recording tt:AudioEncoding shall not be listed. </xs:documentation>
+						<xs:documentation>Indication which encodings are supported for recording. The list may contain one or more enumeration values of tt:VideoEncoding and tt:AudioEncoding. For encodings that are neither defined in tt:VideoEncoding nor tt:AudioEncoding the device shall use the <a href="http://www.iana.org/assignments/media-types/media-types.xhtml">IANA</a> defintions. Note, that a device without audio support shall not return audio encodings.  </xs:documentation>
 					</xs:annotation>
 				</xs:attribute>
 				<xs:attribute name="MaxRate" type="xs:float">
@@ -80,11 +80,60 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 						<xs:documentation>Indication if the device supports recording metadata.</xs:documentation>
 					</xs:annotation>
 				</xs:attribute>
+				<xs:attribute name="SupportedExportFileFormats" type="tt:StringAttrList">
+					<xs:annotation>
+						<xs:documentation> 
+						Indication that the device supports ExportRecordedData command for the listed export file formats.
+						The list shall return at least one export file format value. The value of 'ONVIF' refers to
+						ONVIF Export File Format specification.
+						</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="EventRecording" type="xs:boolean">
+					<xs:annotation>
+						<xs:documentation>Indication that the device supports event triggered recording.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="BeforeEventLimit" type="xs:duration">
+					<xs:annotation>
+						<xs:documentation> 
+							If present a device shall support configuring before event durations up to the given value.
+						</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="AfterEventLimit" type="xs:duration">
+					<xs:annotation>
+						<xs:documentation> 
+							If present a device shall support configuring after event durations up to the given value.
+						</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="SupportedTargetFormats" type="tt:StringAttrList">
+					<xs:annotation>
+						<xs:documentation>
+							List of formats supported by the device for recording to an external target.
+							See tt:TargetFormat for a list of definitions.
+						</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="EncryptionEntryLimit" type="xs:int">
+					<xs:annotation>
+						<xs:documentation>
+							Number of encryption entries supported per recording.
+							By specifying multiple encryption entries per recording, different tracks can be encrypted with different configurations.
+						</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="SupportedEncryptionModes" type="tt:StringAttrList">
+					<xs:annotation>
+						<xs:documentation>
+							Indicates supported encryption modes.
+							See tt:EncryptionMode for a list of definitions.
+						</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
 				<xs:anyAttribute processContents="lax"/>
 			</xs:complexType>
-			<xs:simpleType name="EncodingTypes">
-				<xs:list itemType="xs:string"/>
-			</xs:simpleType>
 			<xs:element name="Capabilities" type="trc:Capabilities"/>
 			<!--===============================-->
 			<xs:element name="CreateRecording">
@@ -471,12 +520,131 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
+
+			<!--===============================-->
+			<xs:element name="ExportRecordedData">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="StartPoint" type="xs:dateTime" minOccurs="0">
+							<xs:annotation>
+								<xs:documentation>Optional parameter that specifies start time for the exporting.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="EndPoint" type="xs:dateTime" minOccurs="0">
+							<xs:annotation>
+								<xs:documentation>Optional parameter that specifies end time for the exporting.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="SearchScope" type="tt:SearchScope">
+							<xs:annotation>
+								<xs:documentation>Indicates the selection criterion on the existing recordings. .</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="FileFormat" type="xs:string">
+							<xs:annotation>
+								<xs:documentation>Indicates which export file format to be used.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="StorageDestination" type="tt:StorageReferencePath">
+							<xs:annotation>
+								<xs:documentation>Indicates the target storage and relative directory path.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="ExportRecordedDataResponse">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="OperationToken" type="tt:ReferenceToken">
+							<xs:annotation>
+								<xs:documentation>Unique operation token for client to associate the relevant events.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="FileNames" type="xs:string" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>List of exported file names. The device can also use AsyncronousOperationStatus event to publish this list.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="Extension" minOccurs="0">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded">	 <!-- first Vendor then ONVIF -->
+										<xs:annotation>
+											<xs:documentation>Extensibility point.</xs:documentation>
+										</xs:annotation>
+									</xs:any>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+
+			<xs:element name="StopExportRecordedData">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="OperationToken" type="tt:ReferenceToken">
+							<xs:annotation>
+								<xs:documentation>Unique ExportRecordedData operation token</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="StopExportRecordedDataResponse">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="Progress" type="xs:float">
+							<xs:annotation>
+								<xs:documentation>Progress percentage of ExportRecordedData operation.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="FileProgressStatus" type="tt:ArrayOfFileProgress">
+							<xs:annotation>
+								<xs:documentation> </xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>	 <!-- first Vendor then ONVIF -->
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+
+			<xs:element name="GetExportRecordedDataState">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="OperationToken" type="tt:ReferenceToken">
+							<xs:annotation>
+								<xs:documentation>Unique ExportRecordedData operation token</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="GetExportRecordedDataStateResponse">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="Progress" type="xs:float">
+							<xs:annotation>
+								<xs:documentation>Progress percentage of ExportRecordedData operation.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="FileProgressStatus" type="tt:ArrayOfFileProgress">
+							<xs:annotation>
+								<xs:documentation> </xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>	 <!-- first Vendor then ONVIF -->
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+
 			<!--===============================-->
 			<xs:complexType name="RecordingOptions">
 				<xs:sequence>
 					<xs:element name="Job" type="trc:JobOptions"/>
 					<xs:element name="Track" type="trc:TrackOptions"/>
-					<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+					<xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>	 <!-- first Vendor then ONVIF -->
 				</xs:sequence>
 			</xs:complexType>
 			<xs:complexType name="JobOptions">
@@ -487,7 +655,7 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 				</xs:attribute>
 				<xs:attribute name="CompatibleSources" type="tt:StringAttrList">
 					<xs:annotation>
-						<xs:documentation>A device that supports recording of a restricted set of Media Service Profiles returns the list of profiles that can be recorded on the given Recording.</xs:documentation>
+						<xs:documentation>A device that supports recording of a restricted set of Media/Media2 Service Profiles returns the list of profiles that can be recorded on the given Recording.</xs:documentation>
 					</xs:annotation>
 				</xs:attribute>
 				<xs:anyAttribute processContents="lax"/>
@@ -625,6 +793,26 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 	<wsdl:message name="GetRecordingJobStateResponse">
 		<wsdl:part name="parameters" element="trc:GetRecordingJobStateResponse"/>
 	</wsdl:message>
+
+	<wsdl:message name="ExportRecordedDataRequest">
+		<wsdl:part name="parameters" element="trc:ExportRecordedData"/>
+	</wsdl:message>
+	<wsdl:message name="ExportRecordedDataResponse">
+		<wsdl:part name="parameters" element="trc:ExportRecordedDataResponse"/>
+	</wsdl:message>
+	<wsdl:message name="StopExportRecordedDataRequest">
+		<wsdl:part name="parameters" element="trc:StopExportRecordedData"/>
+	</wsdl:message>
+	<wsdl:message name="StopExportRecordedDataResponse">
+		<wsdl:part name="parameters" element="trc:StopExportRecordedDataResponse"/>
+	</wsdl:message>
+	<wsdl:message name="GetExportRecordedDataStateRequest">
+		<wsdl:part name="parameters" element="trc:GetExportRecordedDataState"/>
+	</wsdl:message>
+	<wsdl:message name="GetExportRecordedDataStateResponse">
+		<wsdl:part name="parameters" element="trc:GetExportRecordedDataStateResponse"/>
+	</wsdl:message>
+	
 	<wsdl:portType name="RecordingPort">
 		<wsdl:operation name="GetServiceCapabilities">
 			<wsdl:documentation>Returns the capabilities of the recording service. The result is returned in a typed answer.</wsdl:documentation>
@@ -759,6 +947,29 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 			<wsdl:input message="trc:GetRecordingJobStateRequest"/>
 			<wsdl:output message="trc:GetRecordingJobStateResponse"/>
 		</wsdl:operation>
+
+		<wsdl:operation name="ExportRecordedData">
+			<wsdl:documentation>
+			Exports the selected recordings (from existing recorded data) to the given storage target based on the requested file format. 
+			</wsdl:documentation>
+			<wsdl:input message="trc:ExportRecordedDataRequest"/>
+			<wsdl:output message="trc:ExportRecordedDataResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="StopExportRecordedData">
+			<wsdl:documentation>
+			Stops the selected ExportRecordedData operation. 
+			</wsdl:documentation>
+			<wsdl:input message="trc:StopExportRecordedDataRequest"/>
+			<wsdl:output message="trc:StopExportRecordedDataResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="GetExportRecordedDataState">
+			<wsdl:documentation>
+			Retrieves the status of selected ExportRecordedData operation. 
+			</wsdl:documentation>
+			<wsdl:input message="trc:GetExportRecordedDataStateRequest"/>
+			<wsdl:output message="trc:GetExportRecordedDataStateResponse"/>
+		</wsdl:operation>
+		
 	</wsdl:portType>
 	<wsdl:binding name="RecordingBinding" type="trc:RecordingPort">
 		<soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
@@ -924,11 +1135,35 @@ IN NO EVENT WILL THE CORPORATION OR ITS MEMBERS OR THEIR AFFILIATES BE LIABLE FO
 				<soap:body use="literal"/>
 			</wsdl:output>
 		</wsdl:operation>
+
+		<wsdl:operation name="ExportRecordedData">
+			<soap:operation soapAction="http://www.onvif.org/ver10/recording/wsdl/ExportRecordedData"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+		<wsdl:operation name="StopExportRecordedData">
+			<soap:operation soapAction="http://www.onvif.org/ver10/recording/wsdl/StopExportRecordedData"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+		<wsdl:operation name="GetExportRecordedDataState">
+			<soap:operation soapAction="http://www.onvif.org/ver10/recording/wsdl/GetExportRecordedDataState"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+		
 	</wsdl:binding>
 	<!--===============================-->
-    <wsdl:service name="RecordingService">
-        <wsdl:port name="RecordingPort" binding="trc:DeviceBinding">
-            <soap:address location="http://192.168.0.51:8888/onvif/Recording"/>
-        </wsdl:port>
-    </wsdl:service>
 </wsdl:definitions>
