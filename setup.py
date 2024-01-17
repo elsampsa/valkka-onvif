@@ -2,7 +2,7 @@ from setuptools import setup, Extension, find_packages
 import sys
 
 # modified by setver.bash
-version = '1.6.5'
+version = '1.6.6'
 
 setup(
     name = "valkka-onvif",

@@ -19,7 +19,7 @@ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEAL
 @file    base.py
 @author  Sampsa Riikonen
 @date    2023
-@version 1.6.5 
+@version 1.6.6 
 
 @brief   Simple classes for Zeep-based OnVif service clients
 """
@@ -126,21 +126,28 @@ class OnVif:
         
         
 class DeviceManagement(OnVif):
+    wsdl_file = getWSDLPath("devicemgmt-10.wsdl")
     namespace = "http://www.onvif.org/ver10/device/wsdl"
-    wsdl_file = getWSDLPath("devicemgmt.wsdl")
     sub_xaddr = "device_service"
     port      = "DeviceBinding"
     
             
 class Media(OnVif):
-    wsdl_file = getWSDLPath("media.wsdl")
+    wsdl_file = getWSDLPath("media-10.wsdl")
     namespace = "http://www.onvif.org/ver10/media/wsdl"
     sub_xaddr = "Media"
     port      = "MediaBinding"
 
 
+class Media2(OnVif):
+    wsdl_file = getWSDLPath("media-20.wsdl")
+    namespace = "http://www.onvif.org/ver20/media/wsdl"
+    sub_xaddr = "Media"
+    port      = "Media2Binding"
+
+
 class Events(OnVif):
-    wsdl_file = getWSDLPath("events.wsdl")
+    wsdl_file = getWSDLPath("events-10.wsdl")
     namespace = "http://www.onvif.org/ver10/events/wsdl"
     sub_xaddr = "Events"
     port      = "EventPortType"
@@ -151,35 +158,35 @@ class PullPointEvents(Events):
 
 
 class PTZ(OnVif):
-    wsdl_file = getWSDLPath("ptz.wsdl")
+    wsdl_file = getWSDLPath("ptz-20.wsdl")
     namespace = "http://www.onvif.org/ver20/ptz/wsdl"
     sub_xaddr = "PTZ"
     port      = "PTZBinding"
     
 
 class Imaging(OnVif):
-    wsdl_file = getWSDLPath("imaging.wsdl")
+    wsdl_file = getWSDLPath("imaging-20.wsdl")
     namespace = "http://www.onvif.org/ver20/imaging/wsdl"
     sub_xaddr = "Imaging"
     port      = "ImagingPort"
 
 
 class DeviceIO(OnVif):
-    wsdl_file = getWSDLPath("deviceio.wsdl")
+    wsdl_file = getWSDLPath("deviceio-10.wsdl")
     namespace = "http://www.onvif.org/ver10/deviceIO/wsdl"
     sub_xaddr = "DeviceIO"
     port      = "DeviceIOBinding"
     
     
 class AnalyticsEngine(OnVif):
-    wsdl_file = getWSDLPath("analytics.wsdl")
+    wsdl_file = getWSDLPath("analytics-20.wsdl")
     namespace = "http://www.onvif.org/ver20/analytics/wsdl"
     sub_xaddr = "Analytics"
     port      = "AnalyticsEnginePort"
 
 
 class RuleEngine(OnVif):
-    wsdl_file = getWSDLPath("analytics.wsdl")
+    wsdl_file = getWSDLPath("analytics-20.wsdl")
     namespace = "http://www.onvif.org/ver20/analytics/wsdl"
     sub_xaddr = "Analytics"
     port      = "RuleEnginePort"
