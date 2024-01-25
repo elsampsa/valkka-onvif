@@ -168,7 +168,7 @@ class Imaging(OnVif):
     wsdl_file = getWSDLPath("imaging-20.wsdl")
     namespace = "http://www.onvif.org/ver20/imaging/wsdl"
     sub_xaddr = "Imaging"
-    port      = "ImagingPort"
+    port      = "ImagingBinding"
 
 
 class DeviceIO(OnVif):
